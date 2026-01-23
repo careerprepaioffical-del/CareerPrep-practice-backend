@@ -1,0 +1,266 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Base styles */
+@layer base {
+  * {
+    @apply border-secondary-200;
+  }
+  
+  body {
+    @apply bg-white text-secondary-900 font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-secondary-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-secondary-400;
+  }
+
+  /* Selection styles */
+  ::selection {
+    @apply bg-primary-100 text-primary-900;
+  }
+
+  /* Focus styles */
+  :focus {
+    @apply outline-none;
+  }
+
+  :focus-visible {
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-100 text-secondary-900 hover:bg-secondary-200 focus:ring-secondary-500 border border-secondary-200;
+  }
+
+  .btn-success {
+    @apply bg-success-600 text-white hover:bg-success-700 focus:ring-success-500 shadow-sm hover:shadow-md;
+  }
+
+  .btn-warning {
+    @apply bg-warning-600 text-white hover:bg-warning-700 focus:ring-warning-500 shadow-sm hover:shadow-md;
+  }
+
+  .btn-error {
+    @apply bg-error-600 text-white hover:bg-error-700 focus:ring-error-500 shadow-sm hover:shadow-md;
+  }
+
+  .btn-ghost {
+    @apply text-secondary-700 hover:bg-secondary-100 focus:ring-secondary-500;
+  }
+
+  .btn-outline {
+    @apply border border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-500;
+  }
+
+  /* Input styles */
+  .input {
+    @apply block w-full px-3 py-2 border border-secondary-300 rounded-lg shadow-sm placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+  }
+
+  .input-error {
+    @apply border-error-300 focus:ring-error-500 focus:border-error-500;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-white rounded-xl shadow-soft border border-secondary-100;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-medium hover:-translate-y-1;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-100 text-primary-800;
+  }
+
+  .badge-success {
+    @apply bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply bg-warning-100 text-warning-800;
+  }
+
+  .badge-error {
+    @apply bg-error-100 text-error-800;
+  }
+
+  .badge-secondary {
+    @apply bg-secondary-100 text-secondary-800;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-secondary-200 border-t-primary-600;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply backdrop-blur-sm bg-white/80 border border-white/20;
+  }
+
+  /* Animated background */
+  .animated-bg {
+    @apply bg-gradient-to-br from-primary-50 via-white to-secondary-50;
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  /* Code block styles */
+  .code-block {
+    @apply bg-secondary-900 text-secondary-100 p-4 rounded-lg font-mono text-sm overflow-x-auto;
+  }
+
+  /* Monaco editor container */
+  .monaco-container {
+    @apply border border-secondary-200 rounded-lg overflow-hidden;
+  }
+
+  /* Interview question card */
+  .question-card {
+    @apply card p-6 space-y-4;
+  }
+
+  .question-header {
+    @apply flex items-center justify-between;
+  }
+
+  .question-title {
+    @apply text-lg font-semibold text-secondary-900;
+  }
+
+  .question-difficulty {
+    @apply text-sm font-medium px-2 py-1 rounded;
+  }
+
+  .difficulty-easy {
+    @apply bg-success-100 text-success-800;
+  }
+
+  .difficulty-medium {
+    @apply bg-warning-100 text-warning-800;
+  }
+
+  .difficulty-hard {
+    @apply bg-error-100 text-error-800;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply w-full bg-secondary-200 rounded-full h-2;
+  }
+
+  .progress-fill {
+    @apply bg-primary-600 h-2 rounded-full transition-all duration-300;
+  }
+
+  /* Stats card */
+  .stats-card {
+    @apply card p-6 text-center;
+  }
+
+  .stats-value {
+    @apply text-2xl font-bold text-secondary-900;
+  }
+
+  .stats-label {
+    @apply text-sm text-secondary-600 mt-1;
+  }
+
+  /* Navigation styles */
+  .nav-link {
+    @apply flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200;
+  }
+
+  .nav-link-active {
+    @apply bg-primary-100 text-primary-900;
+  }
+
+  .nav-link-inactive {
+    @apply text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Animation delays */
+  .delay-75 {
+    animation-delay: 75ms;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+}
