@@ -127,10 +127,7 @@ export const AuthProvider = ({ children }) => {
             dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
           }
 
-          // On backend cold start (Render), health check first
-          // This prevents timeouts and gives backend time to spin up
-          const isColdStart = !navigator.onLine || document.hidden;
-          
+        
           // Verify token and refresh user data (ensures roles/subscription are current)
           try {
             const response = await api.get('/auth/me');
