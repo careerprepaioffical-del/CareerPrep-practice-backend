@@ -14,7 +14,11 @@ const ALLOWED_QUICK_PRACTICE_CATEGORIES = [
   'javascript',
   'react',
   'nodejs',
-  'general'
+  'general',
+
+  // Added topics
+  'linux',
+  'git'
 ];
 
 const ALLOWED_QUICK_PRACTICE_COUNTS = [10, 20, 30, 50];
