@@ -33,19 +33,19 @@ const topicIcons = {
 };
 
 const topicColors = {
-  dsa: 'from-blue-500 to-cyan-600',
-  oop: 'from-purple-500 to-pink-600',
-  dbms: 'from-green-500 to-emerald-600',
-  os: 'from-orange-500 to-red-600',
-  networks: 'from-indigo-500 to-purple-600',
-  'system-design': 'from-yellow-500 to-orange-600',
-  behavioral: 'from-teal-500 to-blue-600',
-  html: 'from-orange-500 to-red-600',
-  css: 'from-blue-500 to-purple-600',
-  javascript: 'from-yellow-500 to-orange-600',
-  react: 'from-cyan-500 to-blue-600',
-  nodejs: 'from-green-500 to-emerald-600',
-  general: 'from-purple-500 to-pink-600'
+  dsa: 'from-blue-600 to-blue-700',
+  oop: 'from-blue-600 to-blue-700',
+  dbms: 'from-blue-600 to-blue-700',
+  os: 'from-blue-600 to-blue-700',
+  networks: 'from-blue-600 to-blue-700',
+  'system-design': 'from-blue-600 to-blue-700',
+  behavioral: 'from-blue-600 to-blue-700',
+  html: 'from-blue-600 to-blue-700',
+  css: 'from-blue-600 to-blue-700',
+  javascript: 'from-blue-600 to-blue-700',
+  react: 'from-blue-600 to-blue-700',
+  nodejs: 'from-blue-600 to-blue-700',
+  general: 'from-blue-600 to-blue-700'
 };
 
 const QuickMockSetupPage = () => {
@@ -54,7 +54,7 @@ const QuickMockSetupPage = () => {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [difficulty, setDifficulty] = useState('medium');
   const [numberOfQuestions, setNumberOfQuestions] = useState(10);
-  const [timeLimit, setTimeLimit] = useState(15);
+  const [timeLimit, setTimeLimit] = useState(60);
   const [loadingTopics, setLoadingTopics] = useState(true);
 
   useEffect(() => {
@@ -94,11 +94,12 @@ const QuickMockSetupPage = () => {
     try {
       const response = await apiMethods.quickPractice.start({
         count: numberOfQuestions,
-        categories: selectedTopics
+        categories: selectedTopics,
+        timePerQuestion: timeLimit
       });
 
       if (response.data?.success) {
-        toast.success('Mock interview created successfully!');
+        toast.success('Mock test created successfully!');
         window.location.href = `/quick-mock/session/${response.data.data.sessionId}`;
       }
     } catch (error) {
@@ -115,7 +116,7 @@ const QuickMockSetupPage = () => {
 
   if (loadingTopics) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Loading topics...</p>
@@ -125,29 +126,26 @@ const QuickMockSetupPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white"
+        className="rounded-[20px] border border-blue-200 bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 text-white mb-6 overflow-hidden"
       >
-        <div className="max-w-6xl mx-auto px-6 py-12">
+        <div className="max-w-6xl mx-auto px-6 py-10 relative">
+          <div className="absolute -top-10 -right-10 w-56 h-56 bg-white/10 rounded-full pointer-events-none" />
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-3">Quick Mock Interview</h1>
+              <h1 className="text-4xl font-bold mb-3">Quick Mock Test</h1>
               <p className="text-blue-100 text-lg">
                 Test your knowledge with MCQ questions covering DSA, OOP, DBMS, OS, Networks, System Design, and Behavioral topics
               </p>
             </div>
             <div className="hidden lg:block">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm"
-              >
+              <div className="w-20 h-20 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                 <Target className="w-12 h-12 text-white" />
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
@@ -162,7 +160,7 @@ const QuickMockSetupPage = () => {
             transition={{ delay: 0.1 }}
             className="lg:col-span-2"
           >
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+            <div className="bg-white rounded-[20px] shadow-card p-6 border border-slate-200">
               <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center">
                 <BookOpen className="w-6 h-6 mr-3 text-blue-600" />
                 Select Topics
@@ -179,8 +177,8 @@ const QuickMockSetupPage = () => {
                       onClick={() => toggleTopic(topic.name)}
                       className={`p-4 rounded-xl border-2 transition-all duration-200 ${
                         isSelected 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-blue-500 bg-blue-50/70 shadow-sm' 
+                          : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
                       }`}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -235,7 +233,7 @@ const QuickMockSetupPage = () => {
             className="space-y-6"
           >
             {/* Settings Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
+            <div className="bg-white rounded-[20px] shadow-card p-6 border border-slate-200">
               <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
                 <Settings className="w-5 h-5 mr-2 text-blue-600" />
                 Configuration
@@ -254,7 +252,7 @@ const QuickMockSetupPage = () => {
                         onClick={() => setDifficulty(level)}
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${
                           difficulty === level
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
@@ -291,7 +289,7 @@ const QuickMockSetupPage = () => {
                   </label>
                   <input
                     type="range"
-                    min="10"
+                    min="30"
                     max="120"
                     step="10"
                     value={timeLimit}
@@ -299,7 +297,7 @@ const QuickMockSetupPage = () => {
                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                   />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>10s</span>
+                    <span>30s</span>
                     <span>120s</span>
                   </div>
                 </div>
@@ -307,9 +305,9 @@ const QuickMockSetupPage = () => {
             </div>
 
             {/* Summary Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+            <div className="bg-slate-50 rounded-[20px] p-6 border border-slate-200 shadow-card">
               <h3 className="text-lg font-bold text-slate-900 mb-4">
-                Interview Summary
+                Test Summary
               </h3>
               
               <div className="space-y-3 text-sm">
@@ -342,7 +340,7 @@ const QuickMockSetupPage = () => {
               <motion.button
                 onClick={handleStart}
                 disabled={loading || selectedTopics.length === 0}
-                className="w-full mt-6 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:transform-none"
+                className="w-full mt-6 flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md disabled:opacity-50 disabled:transform-none"
                 whileHover={{ scale: loading || selectedTopics.length === 0 ? 1 : 1.02 }}
                 whileTap={{ scale: loading || selectedTopics.length === 0 ? 1 : 0.98 }}
               >
@@ -351,7 +349,7 @@ const QuickMockSetupPage = () => {
                 ) : (
                   <>
                     <Play className="w-5 h-5" />
-                    <span>Start Mock Interview</span>
+                    <span>Start Mock Test</span>
                   </>
                 )}
               </motion.button>

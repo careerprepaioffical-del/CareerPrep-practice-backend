@@ -2,6 +2,8 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 let isRedirectingToLogin = false;
+let lastNetworkToastAt = 0;
+const NETWORK_TOAST_COOLDOWN_MS = 10000;
 
 // Create axios instance
 const api = axios.create({
@@ -126,8 +128,13 @@ api.interceptors.response.use(
           localStorage.removeItem('token');
           delete api.defaults.headers.common['Authorization'];
           
-          // Only redirect to login if not already on auth pages
-          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+          // Only redirect to login if not already on auth pages.
+          // /auth/callback handles its own error state — never hard-redirect from there.
+          if (
+            !window.location.pathname.includes('/login') &&
+            !window.location.pathname.includes('/register') &&
+            !window.location.pathname.includes('/auth/callback')
+          ) {
             toast.error('Session expired. Please login again.', { id: 'session-expired' });
 
             if (!isRedirectingToLogin) {
@@ -169,7 +176,11 @@ api.interceptors.response.use(
     } else if (error.request) {
       // Network error
       if (!skipNetworkToast) {
-        toast.error('Network error. Please check your connection.', { id: 'network-error' });
+        const now = Date.now();
+        if (now - lastNetworkToastAt > NETWORK_TOAST_COOLDOWN_MS) {
+          toast.error('Network error. Please check your connection.', { id: 'network-error' });
+          lastNetworkToastAt = now;
+        }
       }
     } else {
       // Other errors
@@ -186,6 +197,8 @@ export const apiMethods = {
   auth: {
     login: (credentials) => api.post('/auth/login', credentials),
     register: (userData) => api.post('/auth/register', userData),
+    requestPasswordResetOtp: (email) => api.post('/auth/request-password-reset-otp', { email }),
+    resetPassword: (data) => api.post('/auth/reset-password', data),
     logout: () => api.post('/auth/logout'),
     getMe: () => api.get('/auth/me'),
     verifyToken: () => api.post('/auth/verify-token'),
@@ -193,17 +206,17 @@ export const apiMethods = {
 
   // User endpoints
   users: {
-    getProfile: () => api.get('/users/profile'),
+    getProfile: (config = {}) => api.get('/users/profile', config),
     updateProfile: (data) => api.put('/users/profile', data),
     updatePreferences: (data) => api.put('/users/preferences', data),
-    getStats: () => api.get('/users/stats'),
+    getStats: (config = {}) => api.get('/users/stats', config),
     deleteAccount: () => api.delete('/users/account'),
   },
 
   // Interview endpoints
   interviews: {
     create: (data) => api.post('/interviews', data),
-    getAll: (params) => api.get('/interviews', { params }),
+    getAll: (params, config = {}) => api.get('/interviews', { params, ...config }),
     getById: (sessionId) => api.get(`/interviews/${sessionId}`),
     start: (sessionId) => api.post(`/interviews/${sessionId}/start`),
     submitAnswer: (sessionId, data) => api.post(`/interviews/${sessionId}/submit-answer`, data),
@@ -258,11 +271,18 @@ export const apiMethods = {
 
   // Progress endpoints
   progress: {
-    get: () => api.get('/progress'),
+    get: (config = {}) => api.get('/progress', config),
     updateActivity: (data) => api.post('/progress/update-activity', data),
     updateSkill: (data) => api.post('/progress/update-skill', data),
     getAnalytics: (params) => api.get('/progress/analytics', { params }),
     unlockAchievement: (data) => api.post('/progress/achievements', data),
+  },
+
+  // Preparation sheet endpoints
+  preparationSheet: {
+    get: (config = {}) => api.get('/preparation-sheet', config),
+    toggle: (questionId, completed) =>
+      api.patch(`/preparation-sheet/${questionId}/toggle`, typeof completed === 'boolean' ? { completed } : {}),
   },
 
   // MCQ Mock Interview endpoints
@@ -282,6 +302,13 @@ export const apiMethods = {
       create: (data) => api.post('/admin/coding-questions', data),
       update: (id, data) => api.put(`/admin/coding-questions/${id}`, data),
       remove: (id) => api.delete(`/admin/coding-questions/${id}`),
+      upload: (file) => {
+        const form = new FormData();
+        form.append('file', file);
+        return api.post('/admin/coding-questions/upload', form, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
     },
     quickPracticeQuestions: {
       list: (params) => api.get('/admin/quick-practice-questions', { params }),
@@ -292,6 +319,19 @@ export const apiMethods = {
         const form = new FormData();
         form.append('file', file);
         return api.post('/admin/quick-practice-questions/import', form, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+    },
+    preparationSheet: {
+      list: (params) => api.get('/admin/preparation-sheet', { params }),
+      create: (data) => api.post('/admin/preparation-sheet', data),
+      update: (id, data) => api.put(`/admin/preparation-sheet/${id}`, data),
+      remove: (id) => api.delete(`/admin/preparation-sheet/${id}`),
+      upload: (file) => {
+        const form = new FormData();
+        form.append('file', file);
+        return api.post('/admin/preparation-sheet/upload', form, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }

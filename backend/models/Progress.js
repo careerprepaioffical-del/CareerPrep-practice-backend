@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { computeCurrentStreak, toUtcDayKey, toUtcDayStart } = require('../utils/streak');
 
 const skillProgressSchema = new mongoose.Schema({
   skill: {
@@ -34,6 +35,10 @@ const dailyActivitySchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true
+  },
+  logins: {
+    type: Number,
+    default: 0
   },
   interviewsCompleted: {
     type: Number,
@@ -253,22 +258,31 @@ progressSchema.virtual('weeklyGoalCompletion').get(function() {
 
 // Method to update daily activity
 progressSchema.methods.updateDailyActivity = function(date, updates) {
-  const today = new Date(date);
-  today.setHours(0, 0, 0, 0);
+  const today = toUtcDayStart(date);
+  if (!today) {
+    throw new Error('Invalid date provided for daily activity update');
+  }
+  const todayKey = toUtcDayKey(today);
+  
+  // ...existing code...
   
   let dailyRecord = this.dailyActivity.find(activity => 
-    activity.date.getTime() === today.getTime()
+    toUtcDayKey(activity?.date) === todayKey
   );
   
   if (!dailyRecord) {
+    // ...existing code...
     dailyRecord = {
       date: today,
+      logins: 0,
       interviewsCompleted: 0,
       questionsAttempted: 0,
       timeSpent: 0,
       averageScore: 0
     };
     this.dailyActivity.push(dailyRecord);
+  } else {
+    // ...existing code...
   }
 
   const prevInterviewsCompleted = Number.isFinite(dailyRecord.interviewsCompleted)
@@ -278,6 +292,12 @@ progressSchema.methods.updateDailyActivity = function(date, updates) {
   const addInterviewsCompleted = Number.isFinite(updates?.interviewsCompleted)
     ? updates.interviewsCompleted
     : 0;
+
+  if (Number.isFinite(updates?.logins)) {
+    const oldLogins = dailyRecord.logins || 0;
+    dailyRecord.logins = oldLogins + updates.logins;
+    // ...existing code...
+  }
 
   // Increment numeric counters (do not overwrite)
   if (Number.isFinite(updates?.interviewsCompleted)) {
@@ -307,6 +327,11 @@ progressSchema.methods.updateDailyActivity = function(date, updates) {
   }
 
   this.overallStats.lastActivityDate = new Date();
+  
+  // Mark the array as modified so Mongoose saves the changes
+  this.markModified('dailyActivity');
+  
+  // ...existing code...
   
   return this.save();
 };
@@ -356,32 +381,16 @@ progressSchema.methods.unlockAchievement = function(achievementData) {
 
 // Method to update streak
 progressSchema.methods.updateStreak = function() {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const currentStreak = computeCurrentStreak(this.dailyActivity);
   
-  const todayActivity = this.dailyActivity.find(activity => 
-    activity.date.toDateString() === today.toDateString()
-  );
-  
-  const yesterdayActivity = this.dailyActivity.find(activity => 
-    activity.date.toDateString() === yesterday.toDateString()
-  );
-  
-  if (todayActivity && todayActivity.interviewsCompleted > 0) {
-    if (yesterdayActivity && yesterdayActivity.interviewsCompleted > 0) {
-      this.overallStats.currentStreak += 1;
-    } else {
-      this.overallStats.currentStreak = 1;
-    }
-    
-    if (this.overallStats.currentStreak > this.overallStats.longestStreak) {
-      this.overallStats.longestStreak = this.overallStats.currentStreak;
-    }
-  } else if (!todayActivity || todayActivity.interviewsCompleted === 0) {
-    this.overallStats.currentStreak = 0;
+  // ...existing code...
+  // ...existing code...
+
+  this.overallStats.currentStreak = currentStreak;
+  if (currentStreak > (this.overallStats.longestStreak || 0)) {
+    this.overallStats.longestStreak = currentStreak;
   }
-  
+
   return this.save();
 };
 

@@ -373,7 +373,12 @@ class AIService {
     });
 
     const text = result?.response?.text?.() || '';
-    return extractFirstJsonObject(text);
+    try {
+      return extractFirstJsonObject(text);
+    } catch (err) {
+      // If parsing fails, return the raw text as fallback
+      return text;
+    }
   }
 }
 

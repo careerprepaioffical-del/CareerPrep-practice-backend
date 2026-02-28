@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import ChatBot from '../UI/ChatBot';
+
+const ChatBot = lazy(() => import('../UI/ChatBot'));
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-secondary-50">
+    <div className="min-h-screen bg-white">
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -29,13 +30,13 @@ const Layout = ({ children }) => {
       />
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-64 pt-0 sm:pt-0">
         {/* Header */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
         {/* Page content */}
-        <main className="py-6">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <main className="py-4 sm:py-6 bg-white">
+          <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -48,7 +49,9 @@ const Layout = ({ children }) => {
       </div>
 
       {/* ChatBot */}
-      <ChatBot />
+      <Suspense fallback={null}>
+        <ChatBot />
+      </Suspense>
     </div>
   );
 };

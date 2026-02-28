@@ -12,7 +12,7 @@ async function main() {
     process.exit(1);
   }
 
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/prepiq';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/CareerPrep AI';
 
   try {
     await mongoose.connect(mongoUri, {
@@ -31,7 +31,7 @@ async function main() {
     user.role = 'admin';
     await user.save();
 
-    console.log(`✅ Promoted to admin: ${user.email} (${user._id})`);
+    console.log(`Promoted to admin: ${user.email} (${user._id})`);
   } catch (err) {
     console.error('❌ Failed to promote admin:', err);
     process.exitCode = 1;

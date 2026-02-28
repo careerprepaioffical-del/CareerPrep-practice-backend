@@ -4,8 +4,16 @@ const { authenticateToken } = require('../middleware/auth');
 const Progress = require('../models/Progress');
 const Interview = require('../models/Interview');
 const QuickPracticeSession = require('../models/QuickPracticeSession');
+const { computeCurrentStreak } = require('../utils/streak');
 
 const router = express.Router();
+
+const computeTotalTimeSpent = (dailyActivity = []) => {
+  return (Array.isArray(dailyActivity) ? dailyActivity : []).reduce(
+    (sum, activity) => sum + Math.max(0, Number(activity?.timeSpent || 0)),
+    0
+  );
+};
 
 // Helper function to handle validation errors
 const handleValidationErrors = (req, res, next) => {
@@ -35,6 +43,30 @@ router.get('/', authenticateToken, async (req, res) => {
     // Create progress record if it doesn't exist
     if (!progress) {
       progress = new Progress({ userId });
+      await progress.save();
+    }
+
+    const derivedCurrentStreak = computeCurrentStreak(progress.dailyActivity);
+    const derivedTotalTimeSpent = computeTotalTimeSpent(progress.dailyActivity);
+    
+    let shouldSave = false;
+
+    if ((progress.overallStats?.currentStreak || 0) !== derivedCurrentStreak) {
+      progress.overallStats.currentStreak = derivedCurrentStreak;
+      shouldSave = true;
+    }
+
+    if (derivedCurrentStreak > (progress.overallStats?.longestStreak || 0)) {
+      progress.overallStats.longestStreak = derivedCurrentStreak;
+      shouldSave = true;
+    }
+
+    if ((progress.overallStats?.totalTimeSpent || 0) !== derivedTotalTimeSpent) {
+      progress.overallStats.totalTimeSpent = derivedTotalTimeSpent;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
       await progress.save();
     }
 

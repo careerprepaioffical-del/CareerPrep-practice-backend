@@ -263,7 +263,9 @@ const ProgressPage = () => {
             ) : (
               recentAchievements.map((achievement, index) => (
                 <div key={achievement.id || index} className="flex items-center space-x-4 p-3 bg-secondary-50 rounded-lg">
-                  <div className="text-2xl">{achievement.icon || '🏅'}</div>
+                  <div className="w-8 h-8 flex items-center justify-center bg-amber-100 rounded-lg">
+                    <Award className="w-4 h-4 text-amber-600" />
+                  </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-secondary-900">{achievement.name}</h3>
                     <p className="text-sm text-secondary-600">{achievement.description}</p>

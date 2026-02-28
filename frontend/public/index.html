@@ -1,48 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-WB5MMWFP');</script>
-<!-- End Google Tag Manager -->
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#3b82f6" />
-    <meta
-      name="description"
-      content="CareerPrep Ai - AI-Powered Interview Preparation Platform. Master your next interview with personalized questions, real-time feedback, and intelligent guidance."
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/image.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    
-    <!-- Preconnect to external domains for performance -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSA Practice, Coding Challenges & Contests | CareerPrep AI Practice</title>
+    <meta name="description" content="Practice DSA questions, solve coding challenges, join contests and track progress. Trusted by 6000+ students preparing for technical interviews and competitive programming." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://practice.careerprep.tech/" />
+
+    <!-- Hreflang -->
+    <link rel="alternate" href="https://practice.careerprep.tech/" hreflang="en" />
+    <link rel="alternate" href="https://practice.careerprep.tech/" hreflang="en-IN" />
+    <link rel="alternate" href="https://practice.careerprep.tech/" hreflang="x-default" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DSA Practice, Coding Challenges & Contests | CareerPrep AI Practice" />
+    <meta property="og:description" content="Practice DSA and coding challenges, join contests, and track your progress. Trusted by 6000+ students. Start now at CareerPrep AI Practice." />
+    <meta property="og:url" content="https://practice.careerprep.tech/" />
+    <meta property="og:site_name" content="CareerPrep AI Practice" />
+    <meta property="og:image" content="https://practice.careerprep.tech/og-banner.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DSA Practice, Coding Challenges & Contests | CareerPrep AI Practice" />
+    <meta name="twitter:description" content="Practice DSA and coding challenges, join contests, and track your progress. Trusted by 6000+ students. Start now at CareerPrep AI Practice." />
+    <meta name="twitter:image" content="https://practice.careerprep.tech/og-banner.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://practice.careerprep.tech/logo.png" />
+    <link rel="apple-touch-icon" href="https://practice.careerprep.tech/logo.png" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- WebSite Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "CareerPrep AI Practice",
+      "url": "https://practice.careerprep.tech",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://practice.careerprep.tech/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "CareerPrep AI Practice",
+      "url": "https://practice.careerprep.tech",
+      "logo": "https://practice.careerprep.tech/logo.png",
+      "sameAs": [
+        "https://careerprep.tech",
+        "https://ideathon.careerprep.tech",
+        "https://blog.careerprep.tech"
+      ]
+    }
+    </script>
+    <!-- FAQPage Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I start practicing DSA questions?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sign up and start solving structured DSA questions instantly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are coding contests open to all students?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, all registered users can join live contests and track rankings."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I track my progress?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Monitor solved questions, contest performance, and topic-wise improvement."
+          }
+        }
+      ]
+    }
+    </script>
+    <!-- Breadcrumb Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://practice.careerprep.tech/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Contests",
+          "item": "https://practice.careerprep.tech/contests"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "DSA Practice",
+          "item": "https://practice.careerprep.tech/dsa"
+        }
+      ]
+    }
+    </script>
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- SEO Meta Tags -->
-    <meta property="og:title" content="CareerPrep Ai - AI-Powered Interview Preparation" />
-    <meta property="og:description" content="Master your next interview with AI-powered questions, real-time feedback, and personalized guidance." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://careerprep.ai" />
-    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
-    
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CareerPrep Ai - AI-Powered Interview Preparation" />
-    <meta name="twitter:description" content="Master your next interview with AI-powered questions, real-time feedback, and personalized guidance." />
-    <meta name="twitter:image" content="%PUBLIC_URL%/twitter-image.png" />
-    
-    <title>CareerPrep Ai - AI-Powered Interview Preparation Platform</title>
   </head>
   <body>
-    <!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WB5MMWFP"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Removed promotional and descriptive text from main section -->
     <div id="root"></div>
   </body>
 </html>

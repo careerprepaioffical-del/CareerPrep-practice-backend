@@ -29,6 +29,7 @@ const sanitizeSessionForUser = (session) => {
     status: s.status,
     categories: s.categories,
     totalQuestions: s.totalQuestions,
+    timePerQuestion: s.timePerQuestion || 60,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     questions: (s.questions || []).map((q, idx) => ({
@@ -105,12 +106,14 @@ router.post(
   [
     body('count').isIn(ALLOWED_QUICK_PRACTICE_COUNTS).withMessage(`count must be one of: ${ALLOWED_QUICK_PRACTICE_COUNTS.join(', ')}`),
     body('categories').optional().isArray().withMessage('categories must be an array'),
-    body('categories.*').optional().isIn(ALLOWED_QUICK_PRACTICE_CATEGORIES).withMessage('Invalid category')
+    body('categories.*').optional().isIn(ALLOWED_QUICK_PRACTICE_CATEGORIES).withMessage('Invalid category'),
+    body('timePerQuestion').optional().isInt({ min: 10, max: 300 }).withMessage('timePerQuestion must be between 10 and 300 seconds')
   ],
   handleValidationErrors,
   async (req, res) => {
     try {
       const count = Number(req.body.count);
+      const timePerQuestion = Number(req.body.timePerQuestion) || 60; // Default 60 seconds
       const categories = Array.isArray(req.body.categories) && req.body.categories.length
         ? req.body.categories
         : ['dsa', 'oop', 'dbms', 'os', 'networks'];
@@ -134,6 +137,7 @@ router.post(
         userId: req.user._id,
         categories,
         totalQuestions: count,
+        timePerQuestion,
         questions: sampled.map((q) => ({
           questionId: q._id,
           category: q.category,
@@ -276,6 +280,13 @@ router.post(
       session.completedAt = new Date();
       await session.save();
 
+      const elapsedMs = session.completedAt && session.createdAt
+        ? new Date(session.completedAt).getTime() - new Date(session.createdAt).getTime()
+        : 0;
+      const elapsedMinutes = elapsedMs > 0
+        ? Math.max(1, Math.round(elapsedMs / 60000))
+        : 0;
+
       // Update user + progress stats (so dashboard/progress pages reflect results).
       try {
         const userId = req.user._id;
@@ -293,7 +304,7 @@ router.post(
         await progress.updateDailyActivity(new Date(), {
           interviewsCompleted: 1,
           questionsAttempted: answeredCount,
-          timeSpent: 0,
+          timeSpent: elapsedMinutes,
           averageScore: overallPercent
         });
 
@@ -302,6 +313,7 @@ router.post(
         progress.overallStats.totalInterviews += 1;
         progress.overallStats.totalQuestionsAttempted += answeredCount;
         progress.overallStats.totalQuestionsCorrect += correctCount;
+        progress.overallStats.totalTimeSpent += elapsedMinutes;
 
         const completed = progress.overallStats.completedInterviews || 1;
         const prevAvg = progress.overallStats.averageScore || 0;

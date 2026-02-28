@@ -9,13 +9,13 @@ import {
   XCircle, 
   AlertCircle,
   Target,
-  Zap,
   Palette,
   Server,
   Code,
   BookOpen,
   Award,
-  TrendingUp
+  TrendingUp,
+  Zap
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiMethods } from '../../utils/api';
@@ -31,8 +31,7 @@ const QuickMockSessionPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [now, setNow] = useState(Date.now());
+  const [timeRemaining, setTimeRemaining] = useState(60); // Time remaining for current question
 
   const autoAdvanceTimeoutRef = useRef(null);
 
@@ -60,19 +59,19 @@ const QuickMockSessionPage = () => {
   };
 
   const topicColors = {
-    dsa: 'from-blue-500 to-cyan-600',
-    oop: 'from-purple-500 to-pink-600',
-    dbms: 'from-green-500 to-emerald-600',
-    os: 'from-orange-500 to-red-600',
-    networks: 'from-indigo-500 to-purple-600',
-    'system-design': 'from-yellow-500 to-orange-600',
-    behavioral: 'from-teal-500 to-blue-600',
-    html: 'from-orange-500 to-red-600',
-    css: 'from-blue-500 to-purple-600',
-    javascript: 'from-yellow-500 to-orange-600',
-    react: 'from-cyan-500 to-blue-600',
-    nodejs: 'from-green-500 to-emerald-600',
-    general: 'from-purple-500 to-pink-600'
+    dsa: 'from-blue-600 to-blue-700',
+    oop: 'from-blue-600 to-blue-700',
+    dbms: 'from-blue-600 to-blue-700',
+    os: 'from-blue-600 to-blue-700',
+    networks: 'from-blue-600 to-blue-700',
+    'system-design': 'from-blue-600 to-blue-700',
+    behavioral: 'from-blue-600 to-blue-700',
+    html: 'from-blue-600 to-blue-700',
+    css: 'from-blue-600 to-blue-700',
+    javascript: 'from-blue-600 to-blue-700',
+    react: 'from-blue-600 to-blue-700',
+    nodejs: 'from-blue-600 to-blue-700',
+    general: 'from-blue-600 to-blue-700'
   };
 
   const loadSession = useCallback(async () => {
@@ -83,7 +82,7 @@ const QuickMockSessionPage = () => {
       if (response.data?.success) {
         const sessionData = response.data.data;
         setSession(sessionData);
-        setQuestionStartTime(Date.now());
+        setTimeRemaining(sessionData.timePerQuestion || 60);
       } else {
         toast.error('Failed to load session');
         navigate('/quick-mock');
@@ -123,19 +122,88 @@ const QuickMockSessionPage = () => {
     }
   }, [sessionId, answers, submitting, navigate, clearAutoAdvanceTimeout]);
 
+  const handleNext = useCallback(() => {
+    // Manual Next should disable auto-next to avoid double-advancing.
+    clearAutoAdvanceTimeout();
+    if (currentQuestionIndex < session.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setTimeRemaining(session?.timePerQuestion || 60);
+    }
+  }, [currentQuestionIndex, session, clearAutoAdvanceTimeout]);
+
+
+
+  // Removed duplicate handleNext declaration
+
   useEffect(() => {
     loadSession();
   }, [sessionId, loadSession]);
 
+  // Countdown timer effect
   useEffect(() => {
+    if (!session || showExplanation) return;
+
+    // Start countdown from timePerQuestion
+    const startTime = Date.now();
+    const timeLimit = session.timePerQuestion || 60;
+    setTimeRemaining(timeLimit);
+    let hasWarnedLowTime = false;
+
     const intervalId = setInterval(() => {
-      setNow(Date.now());
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, timeLimit - elapsed);
+      setTimeRemaining(remaining);
+
+      // Warn when 10 seconds remaining
+      if (remaining === 10 && !hasWarnedLowTime) {
+        hasWarnedLowTime = true;
+        toast.error('⏰ 10 seconds remaining!', { duration: 2000 });
+      }
+
+      // Auto-advance when time runs out
+      if (remaining === 0) {
+        clearInterval(intervalId);
+        
+        // If no answer selected, record no answer
+        if (selectedAnswer === null) {
+          toast.error('⏱️ Time\'s up! Moving to next question...');
+          const correctIndex = session.questions[currentQuestionIndex].correctIndex;
+          const answerRecord = {
+            questionIndex: currentQuestionIndex,
+            selectedIndex: -1, // -1 indicates no answer
+            isCorrect: false,
+            correctAnswer: correctIndex,
+            explanation: session.questions[currentQuestionIndex].explanation
+          };
+          
+          setAnswers(prev => {
+            const next = Array.isArray(prev) ? [...prev] : [];
+            const existingIndex = next.findIndex(a => a.questionIndex === currentQuestionIndex);
+            if (existingIndex >= 0) next[existingIndex] = answerRecord;
+            else next.push(answerRecord);
+            return next;
+          });
+          
+          setShowExplanation(true);
+        }
+        
+        // Auto-advance to next question or submit
+        setTimeout(() => {
+          if (currentQuestionIndex < session.questions.length - 1) {
+            handleNext();
+          } else {
+            handleSubmit();
+          }
+        }, 2000);
+      }
     }, 1000);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, []);
+  }, [session, showExplanation, currentQuestionIndex, selectedAnswer, handleNext, handleSubmit]);
 
   useEffect(() => {
     return () => {
@@ -184,16 +252,7 @@ const QuickMockSessionPage = () => {
   };
 
 
-  const handleNext = () => {
-    // Manual Next should disable auto-next to avoid double-advancing.
-    clearAutoAdvanceTimeout();
-    if (currentQuestionIndex < session.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setQuestionStartTime(Date.now());
-    }
-  };
+  // ...existing code...
 
   const handlePrevious = () => {
     clearAutoAdvanceTimeout();
@@ -203,6 +262,7 @@ const QuickMockSessionPage = () => {
       const previousAnswer = answers.find(a => a.questionIndex === prevIndex);
       setSelectedAnswer(Number.isInteger(previousAnswer?.selectedIndex) ? previousAnswer.selectedIndex : null);
       setShowExplanation(Boolean(previousAnswer));
+      setTimeRemaining(session?.timePerQuestion || 60);
     }
   };
 
@@ -222,7 +282,7 @@ const QuickMockSessionPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Loading session...</p>
@@ -233,7 +293,7 @@ const QuickMockSessionPage = () => {
 
   if (!session || !currentQuestion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <p className="text-slate-600">Session not found</p>
@@ -243,9 +303,9 @@ const QuickMockSessionPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
+      <div className="bg-white border border-slate-200 shadow-card rounded-[20px]">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -253,7 +313,7 @@ const QuickMockSessionPage = () => {
                 <Icon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Quick Mock Interview</h1>
+                <h1 className="text-xl font-bold text-slate-900">Quick Mock Test</h1>
                 <p className="text-sm text-slate-600">
                   Question {currentQuestionIndex + 1} of {session.questions.length}
                 </p>
@@ -274,11 +334,19 @@ const QuickMockSessionPage = () => {
                 </span>
               </div>
               
-              {/* Timer - removed since new API doesn't have time limits */}
-              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+              {/* Timer - Countdown Timer */}
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full font-semibold ${
+                showExplanation 
+                  ? 'bg-slate-100 text-slate-700'
+                  : timeRemaining <= 10 
+                  ? 'bg-red-100 text-red-700 animate-pulse' 
+                  : timeRemaining <= 30
+                  ? 'bg-orange-100 text-orange-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
                 <Clock className="w-4 h-4" />
-                <span className="font-mono font-semibold">
-                  {formatTime(Math.max(0, Math.round((now - questionStartTime) / 1000)))}
+                <span className="font-mono">
+                  {formatTime(timeRemaining)}
                 </span>
               </div>
             </div>
@@ -294,7 +362,7 @@ const QuickMockSessionPage = () => {
           transition={{ duration: 0.3 }}
         >
           {/* Question Card */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 mb-6">
+          <div className="bg-white rounded-[20px] shadow-card p-8 border border-slate-200 mb-6">
             {/* Question Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -318,14 +386,33 @@ const QuickMockSessionPage = () => {
               </div>
               
               {!showExplanation && (
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-slate-500">
                   Select an answer to continue
+                </div>
+              )}
+              
+              {timeRemaining === 0 && !showExplanation && (
+                <div className="text-sm text-red-600 font-semibold">
+                  ⏱️ Time's Up!
                 </div>
               )}
             </div>
 
+            {/* Time Warning Banner */}
+            {timeRemaining > 0 && timeRemaining <= 10 && !showExplanation && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg"
+              >
+                <p className="text-red-700 text-sm font-semibold text-center">
+                  ⚠️ Only {timeRemaining} seconds remaining!
+                </p>
+              </motion.div>
+            )}
+
             {/* Question */}
-            <h2 className="text-2xl font-bold text-slate-900 mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 mb-8 leading-relaxed">
               {currentQuestion.prompt}
             </h2>
 
@@ -350,7 +437,7 @@ const QuickMockSessionPage = () => {
                           : 'border-slate-200 bg-slate-50'
                         : isSelected
                         ? 'border-blue-500 bg-blue-50'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
                     }`}
                     whileHover={!showExplanation ? { scale: 1.01 } : {}}
                     whileTap={!showExplanation ? { scale: 0.99 } : {}}
@@ -408,7 +495,7 @@ const QuickMockSessionPage = () => {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200"
+                className="mt-6 p-4 bg-blue-50/70 rounded-xl border border-blue-200"
               >
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -426,7 +513,7 @@ const QuickMockSessionPage = () => {
             <button
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-5 h-5" />
               <span>Previous</span>
@@ -445,27 +532,29 @@ const QuickMockSessionPage = () => {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !showExplanation}
-                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg disabled:opacity-50"
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md disabled:opacity-50"
               >
                 {submitting ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    <span>Submit Interview</span>
+                    <span>Submit Test</span>
                   </>
                 )}
               </button>
-            ) : showExplanation ? (
-              <button
-                onClick={handleNext}
-                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
             ) : (
-              <div className="w-32"></div>
+              showExplanation ? (
+                <button
+                  onClick={handleNext}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              ) : (
+                <div className="w-32"></div>
+              )
             )}
           </div>
         </motion.div>
@@ -473,5 +562,4 @@ const QuickMockSessionPage = () => {
     </div>
   );
 };
-
 export default QuickMockSessionPage;

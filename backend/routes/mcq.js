@@ -3,6 +3,27 @@ const router = express.Router();
 const { MCQQuestion, MCQSession } = require('../models/MCQQuestion');
 const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
+const Progress = require('../models/Progress');
+const User = require('../models/User');
+
+const buildCompletedSessionPayload = (session) => ({
+  sessionId: session.sessionId,
+  scores: session.scores,
+  timeSpent: session.timeSpent,
+  responses: session.responses.map(r => {
+    const question = session.questions.find(q => q.questionId.toString() === r.questionId.toString());
+    return {
+      questionId: r.questionId,
+      question: question.question,
+      selectedAnswer: r.selectedAnswer,
+      correctAnswer: question.correctAnswer,
+      isCorrect: r.isCorrect,
+      explanation: question.explanation,
+      topic: question.topic,
+      difficulty: question.difficulty
+    };
+  })
+});
 
 // Get available topics and their question counts
 router.get('/topics', async (req, res) => {
@@ -228,9 +249,14 @@ router.post('/session/:sessionId/answer', async (req, res) => {
     // Check if already answered
     const existingResponse = session.responses.find(r => r.questionId.toString() === questionId);
     if (existingResponse) {
-      return res.status(400).json({
-        success: false,
-        message: 'Question already answered'
+      return res.json({
+        success: true,
+        data: {
+          isCorrect: existingResponse.isCorrect,
+          explanation: question.explanation,
+          correctAnswer: question.correctAnswer,
+          idempotent: true
+        }
       });
     }
 
@@ -280,10 +306,20 @@ router.post('/session/:sessionId/complete', async (req, res) => {
       });
     }
 
+    if (session.status === 'completed') {
+      return res.json({
+        success: true,
+        data: {
+          ...buildCompletedSessionPayload(session),
+          idempotent: true
+        }
+      });
+    }
+
     if (session.status !== 'in-progress') {
       return res.status(400).json({
         success: false,
-        message: 'Session already completed'
+        message: 'Session is not active'
       });
     }
 
@@ -312,41 +348,92 @@ router.post('/session/:sessionId/complete', async (req, res) => {
       totalQuestions: breakdown.total
     }));
 
-    // Update session
-    session.status = 'completed';
-    session.endTime = new Date();
-    session.timeSpent = Math.round((new Date() - session.startTime) / 1000);
-    session.scores = {
-      total: correctAnswers,
-      percentage,
-      topicBreakdown: topicScores
-    };
+    const endTime = new Date();
+    const timeSpent = Math.round((endTime - session.startTime) / 1000);
 
-    await session.save();
+    const updatedSession = await MCQSession.findOneAndUpdate(
+      { _id: session._id, status: 'in-progress' },
+      {
+        $set: {
+          status: 'completed',
+          endTime,
+          timeSpent,
+          scores: {
+            total: correctAnswers,
+            percentage,
+            topicBreakdown: topicScores
+          }
+        }
+      },
+      { new: true }
+    );
 
-    // Update user progress (if you have a progress model)
-    // await updateUserProgress(userId, 'mcq', session.scores);
+    if (!updatedSession) {
+      const latest = await MCQSession.findOne({ sessionId, userId });
+      if (latest?.status === 'completed') {
+        return res.json({
+          success: true,
+          data: {
+            ...buildCompletedSessionPayload(latest),
+            idempotent: true
+          }
+        });
+      }
+      return res.status(409).json({
+        success: false,
+        message: 'Session state changed. Please retry.'
+      });
+    }
+
+    // Update progress + user stats so dashboard reflects quick-mock completions.
+    try {
+      const [user, existingProgress] = await Promise.all([
+        User.findById(userId),
+        Progress.findOne({ userId })
+      ]);
+
+      const progress = existingProgress || new Progress({ userId });
+      const answeredCount = Array.isArray(updatedSession.responses) ? updatedSession.responses.length : 0;
+      const minutes = updatedSession.timeSpent > 0 ? Math.max(1, Math.round(updatedSession.timeSpent / 60)) : 0;
+
+      await progress.updateDailyActivity(new Date(), {
+        interviewsCompleted: 1,
+        questionsAttempted: answeredCount,
+        timeSpent: minutes,
+        averageScore: percentage
+      });
+
+      progress.overallStats.bestScore = Math.max(progress.overallStats.bestScore || 0, percentage || 0);
+      progress.overallStats.completedInterviews += 1;
+      progress.overallStats.totalInterviews += 1;
+      progress.overallStats.totalQuestionsAttempted += answeredCount;
+      progress.overallStats.totalQuestionsCorrect += correctAnswers;
+      progress.overallStats.totalTimeSpent += minutes;
+
+      const completed = progress.overallStats.completedInterviews || 1;
+      const prevAvg = progress.overallStats.averageScore || 0;
+      progress.overallStats.averageScore = Math.round(((prevAvg * (completed - 1)) + (percentage || 0)) / completed);
+
+      await progress.updateStreak();
+      await progress.save();
+
+      if (user) {
+        user.stats.totalInterviews += 1;
+        user.stats.completedInterviews += 1;
+        const userCompleted = user.stats.completedInterviews || 1;
+        const userPrevAvg = user.stats.averageScore || 0;
+        user.stats.averageScore = Math.round(((userPrevAvg * (userCompleted - 1)) + (percentage || 0)) / userCompleted);
+        user.stats.streakDays = progress.overallStats.currentStreak || 0;
+        user.stats.lastActiveDate = new Date();
+        await user.save();
+      }
+    } catch (statsError) {
+      console.warn('mcq stats update error:', statsError);
+    }
 
     res.json({
       success: true,
-      data: {
-        sessionId: session.sessionId,
-        scores: session.scores,
-        timeSpent: session.timeSpent,
-        responses: session.responses.map(r => {
-          const question = session.questions.find(q => q.questionId.toString() === r.questionId.toString());
-          return {
-            questionId: r.questionId,
-            question: question.question,
-            selectedAnswer: r.selectedAnswer,
-            correctAnswer: question.correctAnswer,
-            isCorrect: r.isCorrect,
-            explanation: question.explanation,
-            topic: question.topic,
-            difficulty: question.difficulty
-          };
-        })
-      }
+      data: buildCompletedSessionPayload(updatedSession)
     });
   } catch (error) {
     console.error('Error completing session:', error);

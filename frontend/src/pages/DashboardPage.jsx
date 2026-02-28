@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Brain,
   TrendingUp,
   Target,
   Clock,
@@ -11,11 +10,12 @@ import {
   Play,
   BookOpen,
   BarChart3,
-  Zap,
   Code,
   MessageSquare,
   Star,
-  CheckCircle
+  CheckCircle,
+  Swords,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiMethods } from '../utils/api';
@@ -37,55 +37,69 @@ const DashboardPage = () => {
     let mounted = true;
 
     const loadDashboard = async ({ silent = false } = {}) => {
+      let failSafeTimer;
+
       try {
         if (!silent) {
           setLoading(true);
           setError(null);
+          failSafeTimer = setTimeout(() => {
+            if (!mounted) return;
+            setLoading(false);
+            setError((prev) => prev || 'Dashboard is taking too long to load. Please retry.');
+          }, 12000);
         }
 
-        // Load stats first (critical data needed for dashboard)
-        try {
-          const statsRes = await apiMethods.users.getStats();
-          if (mounted) {
-            setStatsData(statsRes.data?.data || null);
-          }
-        } catch (statsError) {
-          console.error('Stats load error:', statsError);
-          if (mounted) {
-            setStatsData(null); // Use empty state instead of failing
-          }
-        }
+        const requestConfig = {
+          skipNetworkToast: true,
+          skipErrorToast: silent,
+          timeout: 10000
+        };
 
-        // Load interviews in background (non-critical, can fail gracefully)
-        try {
-          const interviewsRes = await apiMethods.interviews.getAll({ page: 1, limit: 3 });
-          if (mounted) {
-            setRecentInterviews(interviewsRes.data?.data?.interviews || []);
-          }
-        } catch (interviewsError) {
-          console.error('Interviews load error:', interviewsError);
-          if (mounted) {
-            setRecentInterviews([]); // Fallback to empty
-          }
-        }
+        const [statsResult, interviewsResult, progressResult] = await Promise.allSettled([
+          apiMethods.users.getStats(requestConfig),
+          apiMethods.interviews.getAll({ page: 1, limit: 3 }, requestConfig),
+          apiMethods.progress.get(requestConfig)
+        ]);
 
-        // Load progress in background (non-critical)
-        try {
-          const progressRes = await apiMethods.progress.get();
-          if (mounted) {
-            setProgressData(progressRes.data?.data?.progress || null);
-          }
-        } catch (progressError) {
-          console.error('Progress load error:', progressError);
-          if (mounted) {
-            setProgressData(null); // Fallback to null
-          }
-        }
-
-      } catch (e) {
         if (!mounted) return;
-        if (!silent) setError('Failed to load some dashboard data. Please refresh.');
+
+        if (statsResult.status === 'fulfilled') {
+          const data = statsResult.value.data?.data || null;
+          console.log('[DASHBOARD DEBUG] Stats API response:', JSON.stringify(data, null, 2));
+          console.log('[DASHBOARD DEBUG] user.streakDays:', data?.user?.streakDays);
+          console.log('[DASHBOARD DEBUG] progress.overallStats.currentStreak:', data?.progress?.overallStats?.currentStreak);
+          setStatsData(data);
+        } else {
+          console.error('Stats load error:', statsResult.reason);
+          setStatsData(null);
+        }
+
+        if (interviewsResult.status === 'fulfilled') {
+          setRecentInterviews(interviewsResult.value.data?.data?.interviews || []);
+        } else {
+          console.error('Interviews load error:', interviewsResult.reason);
+          setRecentInterviews([]);
+        }
+
+        if (progressResult.status === 'fulfilled') {
+          setProgressData(progressResult.value.data?.data?.progress || null);
+        } else {
+          console.error('Progress load error:', progressResult.reason);
+          setProgressData(null);
+        }
+
+        if (!silent && statsResult.status === 'rejected' && interviewsResult.status === 'rejected' && progressResult.status === 'rejected') {
+          setError('Failed to load dashboard data. Please try again.');
+        }
+      } catch (error) {
+        console.error('Dashboard load error:', error);
+        if (!mounted) return;
+        if (!silent) {
+          setError('Failed to load dashboard data. Please try again.');
+        }
       } finally {
+        if (failSafeTimer) clearTimeout(failSafeTimer);
         if (!mounted) return;
         if (!silent) setLoading(false);
       }
@@ -128,6 +142,9 @@ const DashboardPage = () => {
     const overall = statsData?.progress?.overallStats;
     const totalTimeMinutes = overall?.totalTimeSpent || 0;
     const timeSpentHours = totalTimeMinutes ? Math.round((totalTimeMinutes / 60) * 10) / 10 : 0;
+    const timePracticedDisplay = totalTimeMinutes < 60
+      ? `${totalTimeMinutes}m`
+      : `${timeSpentHours}h`;
 
     const recentActivity = Array.isArray(statsData?.progress?.recentActivity)
       ? statsData.progress.recentActivity
@@ -141,21 +158,29 @@ const DashboardPage = () => {
       0
     );
 
+    const currentStreak = overall?.currentStreak ?? statsData?.user?.streakDays ?? 0;
+    console.log('[DASHBOARD DEBUG] Computed currentStreak:', currentStreak, 'from', { 
+      overallCurrentStreak: overall?.currentStreak, 
+      userStreakDays: statsData?.user?.streakDays 
+    });
+
     return {
       totalInterviews: overall?.totalInterviews ?? statsData?.user?.totalInterviews ?? 0,
       completedInterviews: overall?.completedInterviews ?? statsData?.user?.completedInterviews ?? 0,
       averageScore: overall?.averageScore ?? statsData?.user?.averageScore ?? 0,
-      currentStreak: overall?.currentStreak ?? statsData?.user?.streakDays ?? 0,
+      currentStreak,
       questionsAttempted: overall?.totalQuestionsAttempted ?? 0,
       accuracyPercentage: statsData?.progress?.accuracyPercentage ?? 0,
+      totalTimeMinutes,
       timeSpentHours,
+      timePracticedDisplay,
       last7Interviews,
       last7Questions,
       recentActivity
     };
   }, [statsData]);
 
-  // Quick start interview function
+  // Quick start coding interview function
   const handleQuickStart = async (type = 'coding') => {
     setQuickStarting(true);
     try {
@@ -177,7 +202,6 @@ const DashboardPage = () => {
       await apiMethods.interviews.start(sessionId);
 
       toast.success('Interview started successfully!', {
-        icon: '🚀',
         duration: 2000
       });
       
@@ -195,10 +219,15 @@ const DashboardPage = () => {
     }
   };
 
+  // Dashboard AI Interview quick action: go to setup page
+  const handleAIInterviewQuickStart = () => {
+    navigate('/interview/ai-setup');
+  };
+
   const quickActions = [
     {
-      title: 'Start Practice Interview',
-      description: 'Begin a new interview session',
+      title: 'Start Interview Session',
+      description: 'Configure and begin your full interview practice',
       icon: Play,
       href: '/interview',
       color: 'from-blue-600 to-indigo-600',
@@ -206,8 +235,8 @@ const DashboardPage = () => {
       primary: true
     },
     {
-      title: 'Quick Start - Coding',
-      description: 'Jump into a coding challenge',
+      title: 'Instant Coding Challenge',
+      description: 'Solve a timed coding problem right now',
       icon: Code,
       action: () => handleQuickStart('coding'),
       color: 'from-green-600 to-emerald-600',
@@ -215,33 +244,33 @@ const DashboardPage = () => {
       quick: true
     },
     {
-      title: 'Quick Start - AI Interview',
-      description: 'Practice with AI interviewer',
+      title: 'AI Interview Practice',
+      description: 'Real-time conversation with AI interviewer',
       icon: MessageSquare,
-      action: () => handleQuickStart('ai_interview'),
+      action: handleAIInterviewQuickStart,
       color: 'from-purple-600 to-pink-600',
       textColor: 'text-white',
       quick: true
     },
     {
-      title: 'View Progress',
-      description: 'Check your improvement analytics',
+      title: 'Track Your Progress',
+      description: 'Analyze performance metrics and growth',
       icon: BarChart3,
       href: '/progress',
       color: 'from-orange-600 to-yellow-600',
       textColor: 'text-white'
     },
     {
-      title: 'Quick Mock Interview',
-      description: 'MCQ tests on web development topics',
+      title: 'Quick Mock Test',
+      description: 'Rapid MCQ practice on web fundamentals',
       icon: Target,
       href: '/quick-mock',
       color: 'from-teal-600 to-cyan-600',
       textColor: 'text-white'
     },
     {
-      title: 'Preparation Guide',
-      description: 'Get personalized study plans',
+      title: 'Practice Roadmap',
+      description: 'Follow curated problem-solving checklist',
       icon: BookOpen,
       href: '/preparation-guide',
       color: 'from-rose-600 to-red-600',
@@ -284,105 +313,112 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
-      {/* Enhanced Welcome Section */}
+    <div className="min-h-screen bg-white p-2 sm:p-4">
+      {/* Welcome / Hero Section */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 md:p-10 text-white shadow-2xl mb-8"
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-[20px] p-6 md:p-8 mb-6 border border-blue-200 bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 shadow-[0_10px_32px_rgba(30,64,175,0.28)]"
       >
-        <div className="flex items-center justify-between">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl font-bold mb-3">
-              Welcome back, {user?.name?.split(' ')[0]}! 👋
+        {/* Decorative circles */}
+        <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full pointer-events-none" />
+        <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
+
+        <div className="relative flex items-center justify-between">
+          <div className="max-w-xl">
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-white/90 uppercase tracking-wider">
+                Dashboard
+              </span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Welcome back, {user?.name?.split(' ')[0]}
             </h1>
-            <p className="text-blue-100 text-lg mb-6">
-              Let's keep building your skills and confidence together. You're getting better every day!
+            <p className="text-blue-100 text-sm mb-5">
+              Keep building your skills — every session brings you closer to your dream role.
             </p>
-            
+
             {/* Quick Start Buttons */}
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleQuickStart('coding')}
-                disabled={quickStarting}
-                className="flex items-center space-x-2 px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:transform-none"
+
+              <Link
+                to="/quick-mock"
+                className="flex items-center space-x-2 px-5 py-2.5 bg-white text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all duration-200 shadow-md"
               >
-                {quickStarting ? (
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <Zap className="w-5 h-5" />
-                    <span>Quick Start Coding</span>
-                  </>
-                )}
-              </button>
-              
+                <Target className="w-4 h-4" />
+                <span>Mock Test</span>
+              </Link>
+
               <Link
                 to="/interview"
-                className="flex items-center space-x-2 px-6 py-3 bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-800 transition-all transform hover:scale-105 shadow-lg"
+                className="flex items-center space-x-2 px-5 py-2.5 bg-white/10 text-white border border-white/20 rounded-xl text-sm font-bold hover:bg-white/20 transition-all duration-200"
               >
-                <Play className="w-5 h-5" />
+                <Play className="w-4 h-4" />
                 <span>Custom Setup</span>
               </Link>
             </div>
           </div>
-          
-          <div className="hidden lg:block">
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm"
-            >
-              <Brain className="w-16 h-16 text-white" />
-            </motion.div>
+
+          <div className="hidden lg:flex items-center justify-center">
+            <div className="w-20 h-20 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              <GraduationCap className="w-10 h-10 text-white/90" />
+            </div>
           </div>
         </div>
       </motion.div>
 
       {loading && (
-        <div className="card p-8 mb-8 shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-[20px] p-8 mb-6 shadow-card">
           <LoadingSpinner text="Loading your dashboard..." />
         </div>
       )}
 
       {!loading && error && (
-        <div className="card p-8 mb-8 shadow-xl border-2 border-red-200 bg-red-50">
+        <div className="bg-red-50 border border-red-200 rounded-[20px] p-6 mb-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-red-700 mb-2">Unable to Load Dashboard</h3>
-              <p className="text-red-600 font-medium">{error}</p>
-              <p className="text-red-600 text-sm mt-2">This can happen if the backend server is starting up. Please try again in a moment.</p>
+              <h3 className="text-base font-semibold text-red-700 mb-1">Unable to Load Dashboard</h3>
+              <p className="text-red-600 text-sm font-medium">{error}</p>
+              <p className="text-red-400 text-xs mt-1.5">This can happen if the backend server is starting up. Please try again.</p>
             </div>
             <button
               onClick={() => {
                 setError(null);
                 setLoading(true);
-                // Reload dashboard
                 const loadDashboard = async () => {
+                  const requestConfig = { skipNetworkToast: true, timeout: 10000 };
                   try {
-                    const statsRes = await apiMethods.users.getStats();
-                    setStatsData(statsRes.data?.data || null);
+                    const [statsRes, interviewsRes, progressRes] = await Promise.allSettled([
+                      apiMethods.users.getStats(requestConfig),
+                      apiMethods.interviews.getAll({ page: 1, limit: 3 }, requestConfig),
+                      apiMethods.progress.get(requestConfig)
+                    ]);
+
+                    setStatsData(statsRes.status === 'fulfilled' ? (statsRes.value.data?.data || null) : null);
+                    setRecentInterviews(
+                      interviewsRes.status === 'fulfilled'
+                        ? (interviewsRes.value.data?.data?.interviews || [])
+                        : []
+                    );
+                    setProgressData(
+                      progressRes.status === 'fulfilled'
+                        ? (progressRes.value.data?.data?.progress || null)
+                        : null
+                    );
+
+                    if (statsRes.status === 'rejected' && interviewsRes.status === 'rejected' && progressRes.status === 'rejected') {
+                      setError('Failed to load dashboard data. Please try again.');
+                    }
                   } catch (e) {
-                    setStatsData(null);
+                    setError('Failed to load dashboard data. Please try again.');
+                  } finally {
+                    setLoading(false);
                   }
-                  try {
-                    const interviewsRes = await apiMethods.interviews.getAll({ page: 1, limit: 3 });
-                    setRecentInterviews(interviewsRes.data?.data?.interviews || []);
-                  } catch (e) {
-                    setRecentInterviews([]);
-                  }
-                  try {
-                    const progressRes = await apiMethods.progress.get();
-                    setProgressData(progressRes.data?.data?.progress || null);
-                  } catch (e) {
-                    setProgressData(null);
-                  }
-                  setLoading(false);
                 };
                 loadDashboard();
               }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors whitespace-nowrap ml-4"
+              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors duration-200 whitespace-nowrap ml-4"
             >
               Retry
             </button>
@@ -390,160 +426,133 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Enhanced Stats Overview */}
+      {/* Stats Overview */}
       {!loading && !error && (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-8"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center shadow-md">
-                <Brain className="w-7 h-7 text-blue-600" />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-6"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                icon: Swords,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                value: computed.totalInterviews,
+                label: 'Total Interviews',
+                sub: `+${computed.last7Interviews} this week`
+              },
+              {
+                icon: Target,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                value: computed.questionsAttempted,
+                label: 'Questions Done',
+                sub: `${computed.accuracyPercentage}% accuracy`
+              },
+              {
+                icon: Star,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                value: `${computed.averageScore}%`,
+                label: 'Average Score',
+                sub: `+${computed.last7Questions} questions`
+              },
+              {
+                icon: Clock,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                value: computed.currentStreak > 0
+                  ? `${computed.currentStreak} day${computed.currentStreak === 1 ? '' : 's'}`
+                  : '0 days',
+                label: 'Day Streak',
+                sub: computed.totalTimeMinutes > 0
+                  ? `${computed.timePracticedDisplay} practiced`
+                  : 'Start practicing today'
+              }
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="group relative overflow-hidden bg-white rounded-[20px] p-5 border border-slate-200 shadow-card hover:shadow-card-hover transition-all duration-200"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-11 h-11 ${stat.iconBg} border border-blue-100 rounded-xl flex items-center justify-center`}>
+                    <stat.icon className={`w-4 h-4 ${stat.iconColor}`} />
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium text-right leading-tight max-w-[48%]">{stat.sub}</span>
+                </div>
+                <div className="text-3xl font-bold text-slate-900 mb-1 tracking-tight">{stat.value}</div>
+                <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{stat.label}</div>
               </div>
-              <span className="text-xs text-slate-600 font-medium bg-blue-50 px-2 py-1 rounded-full">
-                Last 7 days: {computed.last7Interviews}
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{computed.totalInterviews}</div>
-            <div className="text-sm text-slate-600">Total Interviews</div>
+            ))}
           </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center shadow-md">
-                <Target className="w-7 h-7 text-green-600" />
-              </div>
-              <span className="text-xs text-slate-600 font-medium bg-green-50 px-2 py-1 rounded-full">
-                Accuracy: {computed.accuracyPercentage}%
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{computed.questionsAttempted}</div>
-            <div className="text-sm text-slate-600">Questions Attempted</div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center shadow-md">
-                <Star className="w-7 h-7 text-yellow-600" />
-              </div>
-              <span className="text-xs text-slate-600 font-medium bg-yellow-50 px-2 py-1 rounded-full">
-                Last 7 days: {computed.last7Questions}
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{computed.averageScore}%</div>
-            <div className="text-sm text-slate-600">Average Score</div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center shadow-md">
-                <Clock className="w-7 h-7 text-purple-600" />
-              </div>
-              <span className="text-xs text-slate-600 font-medium bg-purple-50 px-2 py-1 rounded-full">
-                Streak: {computed.currentStreak} days
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">{computed.timeSpentHours}h</div>
-            <div className="text-sm text-slate-600">Time Practiced</div>
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
       )}
 
-      {/* Enhanced Quick Actions */}
+      {/* Quick Actions */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="mb-8"
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="mb-6"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {quickActions.map((action, index) => {
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {quickActions.map((action) => {
+            const cardClass = "group relative overflow-hidden bg-white border border-slate-200 hover:border-blue-300 hover:shadow-card-hover rounded-[20px] p-5 transition-all duration-200 text-left w-full";
+            const inner = (
+              <>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50">
+                  <action.icon className="w-4 h-4 text-blue-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-1.5 group-hover:text-blue-700 transition-colors duration-200">{action.title}</h3>
+                <p className="text-xs text-slate-500 pr-5">{action.description}</p>
+                <ArrowRight className="absolute bottom-4 right-4 w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all duration-200" />
+              </>
+            );
             if (action.action) {
-              // Button with action
               return (
-                <motion.button
-                  key={action.title}
-                  onClick={action.action}
-                  disabled={quickStarting}
-                  className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-200 group text-left disabled:opacity-50"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className={`w-16 h-16 bg-gradient-to-r ${action.color} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
-                    <action.icon className={`w-7 h-7 ${action.textColor}`} />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
-                    {action.title}
-                  </h3>
-                  <p className="text-slate-600 mb-4">
-                    {action.description}
-                  </p>
-                  <div className="flex items-center text-blue-600 font-semibold">
-                    <span>Start now</span>
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                  </div>
+                <motion.button key={action.title} onClick={action.action} disabled={quickStarting} className={cardClass} whileTap={{ scale: 0.98 }}>
+                  {inner}
                 </motion.button>
               );
-            } else {
-              // Link
-              return (
-                <Link
-                  key={action.title}
-                  to={action.href}
-                  className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200 hover:shadow-2xl transition-all duration-200 group"
-                >
-                  <div className={`w-16 h-16 bg-gradient-to-r ${action.color} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
-                    <action.icon className={`w-7 h-7 ${action.textColor}`} />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
-                    {action.title}
-                  </h3>
-                  <p className="text-slate-600 mb-4">
-                    {action.description}
-                  </p>
-                  <div className="flex items-center text-blue-600 font-semibold">
-                    <span>Get started</span>
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                  </div>
-                </Link>
-              );
             }
+            return (
+              <Link key={action.title} to={action.href} className={cardClass}>
+                {inner}
+              </Link>
+            );
           })}
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Enhanced Recent Interviews */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        {/* Recent Interviews */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 hover:shadow-2xl transition-shadow duration-300"
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="bg-slate-50 rounded-[20px] p-5 border border-slate-200 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Recent Interviews</h2>
-            <Link
-              to="/interview"
-              className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center"
-            >
-              View all
-              <ArrowRight className="w-4 h-4 ml-1" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-700">Recent Interviews</h2>
+            <Link to="/interview" className="text-blue-600 hover:text-blue-700 text-xs font-semibold flex items-center transition-colors duration-200">
+              View all <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {!loading && recentInterviews.length === 0 && (
-              <div className="p-6 bg-slate-50 rounded-xl text-center">
-                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Target className="w-6 h-6 text-slate-400" />
+              <div className="py-8 text-center">
+                <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <Target className="w-5 h-5 text-slate-400" />
                 </div>
-                <p className="text-slate-700 font-semibold">No interviews yet</p>
-                <p className="text-sm text-slate-600 mt-1">Start an interview to see it here.</p>
+                <p className="text-slate-500 text-sm font-medium">No interviews yet</p>
+                <p className="text-xs text-slate-400 mt-1">Start an interview to see it here.</p>
               </div>
             )}
 
@@ -553,82 +562,69 @@ const DashboardPage = () => {
               const score = getInterviewScore(interview);
               const createdAt = interview?.createdAt || interview?.startTime;
               return (
-                <motion.div
-                  key={interview.sessionId}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <span className="text-sm font-bold text-blue-700">
+                <div key={interview.sessionId} className="flex items-center justify-between p-3 bg-white hover:bg-blue-50/60 rounded-xl transition-colors duration-200 border border-slate-200 hover:border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-blue-600">
                         {String(company).charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-slate-900">{company}</h3>
-                      <p className="text-sm text-slate-600">{role}</p>
+                      <p className="text-sm font-semibold text-slate-800">{company}</p>
+                      <p className="text-xs text-slate-500">{role}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-slate-900">
-                      {typeof score === 'number' ? `${score}%` : '—'}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {createdAt ? new Date(createdAt).toLocaleDateString() : ''}
-                    </div>
+                    <div className="text-sm font-bold text-slate-800">{typeof score === 'number' ? `${score}%` : '—'}</div>
+                    <div className="text-xs text-slate-400">{createdAt ? new Date(createdAt).toLocaleDateString() : ''}</div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
         </motion.div>
 
-        {/* Enhanced Achievements */}
+        {/* Achievements */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 hover:shadow-2xl transition-shadow duration-300"
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="bg-slate-50 rounded-[20px] p-5 border border-slate-200 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Achievements</h2>
-            <Link
-              to="/progress"
-              className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center"
-            >
-              View all
-              <ArrowRight className="w-4 h-4 ml-1" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-700">Achievements</h2>
+            <Link to="/progress" className="text-blue-600 hover:text-blue-700 text-xs font-semibold flex items-center transition-colors duration-200">
+              View all <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2">
             {!loading && achievements.length === 0 && (
-              <div className="col-span-2 p-6 bg-slate-50 rounded-xl text-center">
-                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Award className="w-6 h-6 text-slate-400" />
+              <div className="col-span-2 py-8 text-center">
+                <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <Award className="w-5 h-5 text-slate-400" />
                 </div>
-                <p className="text-slate-700 font-semibold">No achievements yet</p>
-                <p className="text-sm text-slate-600 mt-1">Complete interviews to unlock achievements.</p>
+                <p className="text-slate-500 text-sm font-medium">No achievements yet</p>
+                <p className="text-xs text-slate-400 mt-1">Complete interviews to unlock achievements.</p>
               </div>
             )}
 
-            {achievements.map((achievement) => (
+            {achievements.map((achievement, idx) => (
               <motion.div
                 key={achievement.id}
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * achievements.indexOf(achievement) }}
-                className="p-4 rounded-xl border-2 transition-all duration-200 border-green-200 bg-green-50 hover:shadow-md"
+                transition={{ delay: 0.05 * idx }}
+                className="p-3 rounded-xl border border-blue-200 bg-white hover:border-blue-300 transition-colors duration-200"
               >
-                <div className="text-3xl mb-2">{achievement.icon || '🏆'}</div>
-                <h3 className="font-bold text-slate-900 text-sm mb-1">
-                  {achievement.name}
-                </h3>
-                <p className="text-xs text-slate-600">{achievement.description}</p>
-                <div className="mt-3">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                    <CheckCircle className="w-3 h-3 mr-1" />
+                <div className="w-7 h-7 bg-gradient-to-br from-blue-50 to-sky-50 border border-blue-100 rounded-lg flex items-center justify-center mb-2">
+                  <Award className="w-3.5 h-3.5 text-blue-600" />
+                </div>
+                <p className="font-semibold text-slate-800 text-xs mb-0.5">{achievement.name}</p>
+                <p className="text-xs text-slate-500">{achievement.description}</p>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                    <CheckCircle className="w-2.5 h-2.5 mr-1" />
                     Unlocked
                   </span>
                 </div>
@@ -638,86 +634,62 @@ const DashboardPage = () => {
         </motion.div>
       </div>
 
-      {/* Enhanced Recent Activity */}
+      {/* Recent Activity */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="pb-8"
+        transition={{ duration: 0.4, delay: 0.5 }}
+        className="pb-6"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 hover:shadow-2xl transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Recent Activity</h2>
-            <div className="flex items-center space-x-2 text-sm text-slate-600">
-              <TrendingUp className="w-4 h-4" />
+        <div className="bg-slate-50 rounded-[20px] p-5 border border-slate-200 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-700">Recent Activity</h2>
+            <div className="flex items-center space-x-1.5 text-xs text-slate-400">
+              <TrendingUp className="w-3 h-3" />
               <span>Last 7 days</span>
             </div>
           </div>
 
           {loading ? (
-            <div className="py-8">
-              <LoadingSpinner text="Loading activity..." />
-            </div>
+            <div className="py-6"><LoadingSpinner text="Loading activity..." /></div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {computed.recentActivity.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="w-8 h-8 text-slate-400" />
+                <div className="text-center py-10">
+                  <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center mx-auto mb-2">
+                    <TrendingUp className="w-5 h-5 text-slate-400" />
                   </div>
-                  <p className="text-slate-700 font-semibold text-lg">No activity yet</p>
-                  <p className="text-sm text-slate-600 mt-2">Start practicing to build your streak.</p>
+                  <p className="text-slate-500 text-sm font-medium">No activity yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Start practicing to build your streak.</p>
                   <button
                     onClick={() => handleQuickStart('coding')}
-                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    className="mt-3 px-4 py-1.5 bg-blue-600 text-white text-xs rounded-xl font-semibold hover:bg-blue-700 transition-colors duration-200"
                   >
                     Start Your First Interview
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {computed.recentActivity
-                    .slice()
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
-                    .map((day, index) => (
-                      <motion.div
-                        key={day.date}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 * index }}
-                        className="flex items-center justify-between bg-slate-50 rounded-xl px-6 py-4 hover:bg-slate-100 transition-colors"
-                      >
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            {new Date(day.date).toLocaleDateString('en-US', { 
-                              weekday: 'short', 
-                              month: 'short', 
-                              day: 'numeric' 
-                            })}
-                          </div>
-                          <div className="text-sm text-slate-600 mt-1">
-                            <span className="inline-flex items-center space-x-3">
-                              <span className="flex items-center">
-                                <Brain className="w-3 h-3 mr-1" />
-                                Interviews: {day.interviewsCompleted || 0}
-                              </span>
-                              <span>•</span>
-                              <span className="flex items-center">
-                                <Target className="w-3 h-3 mr-1" />
-                                Questions: {day.questionsAttempted || 0}
-                              </span>
-                            </span>
-                          </div>
+                computed.recentActivity
+                  .slice()
+                  .sort((a, b) => new Date(b.date) - new Date(a.date))
+                  .map((day) => (
+                    <div key={day.date} className="flex items-center justify-between bg-white hover:bg-blue-50/60 rounded-xl px-4 py-3 transition-colors duration-200 border border-slate-200 hover:border-blue-200">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">
+                          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-lg text-slate-900">
-                            {Math.round(day.averageScore || 0)}%
-                          </div>
-                          <div className="text-xs text-slate-600">Avg score</div>
+                        <div className="text-xs text-slate-500 mt-0.5 flex items-center space-x-2">
+                          <span className="flex items-center"><Swords className="w-2.5 h-2.5 mr-0.5" />{day.interviewsCompleted || 0} interviews</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="flex items-center"><Target className="w-2.5 h-2.5 mr-0.5" />{day.questionsAttempted || 0} questions</span>
                         </div>
-                      </motion.div>
-                    ))}
-                </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-slate-800">{Math.round(day.averageScore || 0)}%</div>
+                        <div className="text-xs text-slate-400">avg score</div>
+                      </div>
+                    </div>
+                  ))
               )}
             </div>
           )}

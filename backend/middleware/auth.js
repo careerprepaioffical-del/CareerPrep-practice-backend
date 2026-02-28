@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Progress = require('../models/Progress');
+const { toUtcDayKey } = require('../utils/streak');
+const { markLoginActivityAndStreak } = require('../services/streakService');
 
 // Middleware to verify JWT token
 const authenticateToken = async (req, res, next) => {
@@ -27,14 +30,50 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Update last active date (avoid saving a partially-selected document)
-    User.updateOne(
-      { _id: user._id },
-      { $set: { 'stats.lastActiveDate': new Date() } }
-    ).catch((e) => console.error('Failed to update lastActiveDate:', e));
+    const todayKey = toUtcDayKey(new Date());
+    const lastActiveKey = toUtcDayKey(user?.stats?.lastActiveDate);
 
-    // Add user to request object
-    req.user = user;
+    // ...existing code...
+
+    // Check if we need to update streak:
+    // 1. Different day from lastActiveDate, OR
+    // 2. Same day but we haven't confirmed today's login in Progress yet
+    let needsUpdate = todayKey && lastActiveKey !== todayKey;
+    
+    if (!needsUpdate && todayKey === lastActiveKey) {
+      // Same day - but verify we actually have today's login recorded in Progress
+      const progress = await Progress.findOne({ userId: user._id });
+      if (progress) {
+        const todayRecord = progress.dailyActivity.find(a => toUtcDayKey(a?.date) === todayKey);
+        const hasLoginToday = todayRecord && (todayRecord.logins || 0) > 0;
+        if (!hasLoginToday) {
+          // ...existing code...
+          needsUpdate = true;
+        }
+      }
+    }
+
+    if (needsUpdate) {
+      // ...existing code...
+      try {
+        await markLoginActivityAndStreak(user._id);
+        // Reload user so req.user has fresh stats.streakDays + lastActiveDate
+        const freshUser = await User.findById(user._id).select('-password');
+        // ...existing code...
+        req.user = freshUser || user;
+      } catch (e) {
+        console.error('Failed to update login streak activity:', e);
+        req.user = user;
+      }
+    } else {
+      // ...existing code...
+      User.updateOne(
+        { _id: user._id },
+        { $set: { 'stats.lastActiveDate': new Date() } }
+      ).catch((e) => console.error('Failed to update lastActiveDate:', e));
+      req.user = user;
+    }
+
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -160,7 +199,7 @@ const generateToken = (userId) => {
     process.env.JWT_SECRET,
     { 
       expiresIn: '7d',
-      issuer: 'prepiq-api',
+        issuer: 'CareerPrep AI-api',
       audience: 'prepiq-users'
     }
   );
@@ -173,7 +212,7 @@ const generateRefreshToken = (userId) => {
     process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
     { 
       expiresIn: '30d',
-      issuer: 'prepiq-api',
+        issuer: 'CareerPrep AI-api',
       audience: 'prepiq-users'
     }
   );

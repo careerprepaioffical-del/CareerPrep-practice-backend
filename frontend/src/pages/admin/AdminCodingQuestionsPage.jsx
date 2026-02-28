@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { apiMethods } from '../../utils/api';
 
 const emptyQuestion = {
@@ -78,6 +79,7 @@ const parseLeetCodeRef = (raw) => {
 const AdminCodingQuestionsPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
   const [difficulty, setDifficulty] = useState('');
@@ -316,13 +318,88 @@ int main() {
       toast.error(err?.response?.data?.message || 'Failed to delete');
     }
   };
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    setUploading(true);
+    try {
+      const res = await apiMethods.admin.codingQuestions.upload(file);
+      const { inserted, total, errors } = res?.data?.data || {};
+      
+      if (errors && errors.length > 0) {
+        toast.error(`Uploaded ${inserted}/${total} questions. Some rows had errors.`);
+        console.error('Upload errors:', errors);
+      } else {
+        toast.success(`Successfully uploaded ${inserted} question(s)`);
+      }
+      
+      e.target.value = '';
+      await fetchItems();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadSampleCSV = () => {
+    const csvContent = `title,description,difficulty,source,sourceId,sourceUrl,constraints,tags,hints,testCase1Input,testCase1Output,testCase1Hidden,testCase2Input,testCase2Output,testCase2Hidden,starterCode_javascript
+"Two Sum","Find two numbers that add up to target","easy","leetcode","two-sum","https://leetcode.com/problems/two-sum/","2 <= nums.length <= 10^4","array,hash-table","Use a hash map|Check complement","[2,7,11,15], 9","[0,1]",false,"[3,2,4], 6","[1,2]",false,"function twoSum(nums, target) { // Write your code here }"
+"Reverse Linked List","Reverse a singly linked list","medium","leetcode","reverse-linked-list","https://leetcode.com/problems/reverse-linked-list/","Number of nodes: [0, 5000]","linked-list,recursion","Think iteratively|Use three pointers","1->2->3->4->5","5->4->3->2->1",false,"1->2","2->1",true,"function reverseList(head) { // Write your code here }"`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'coding-questions-sample.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900">LeetCode / Coding Questions</h1>
           <p className="text-secondary-600 mt-1">Add simple coding questions with test cases (admin-only).</p>
+        </div>
+      </div>
+
+      {/* Bulk Upload Section */}
+      <div className="mt-6 card p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-dashed border-blue-300">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-600 text-white rounded-lg">
+            <FileSpreadsheet className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-secondary-900 mb-2">Bulk Upload Questions</h2>
+            <p className="text-sm text-secondary-600 mb-4">
+              Upload CSV or Excel file to add multiple coding questions at once. 
+              Required: <strong>title</strong>, <strong>description</strong>. 
+              Optional: difficulty, source, sourceId, sourceUrl, constraints, tags (comma-separated), hints (pipe-separated), testCase columns, starterCode.
+            </p>
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="btn btn-primary cursor-pointer">
+                <Upload className="w-4 h-4 mr-2" />
+                {uploading ? 'Uploading...' : 'Choose File'}
+                <input
+                  type="file"
+                  accept=".csv,.xls,.xlsx"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+              
+              <button type="button" onClick={downloadSampleCSV} className="btn btn-secondary">
+                <Download className="w-4 h-4 mr-2" />
+                Download Sample CSV
+              </button>
+              
+              <span className="text-xs text-secondary-500">Max 5MB • CSV, XLS, XLSX</span>
+            </div>
+          </div>
         </div>
       </div>
 

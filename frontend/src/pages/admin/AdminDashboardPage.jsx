@@ -35,6 +35,18 @@ const AdminDashboardPage = () => {
                 Add HTML/CSS/JavaScript interview MCQs used in random tests.
               </p>
             </div>
+
+            <div className="border border-secondary-200 rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-semibold text-secondary-900">Preparation Sheet Bank</h2>
+                <Link to="/admin/preparation-sheet" className="btn btn-primary text-sm">
+                  Open
+                </Link>
+              </div>
+              <p className="text-sm text-secondary-600 mt-1">
+                Post question links so users can tick/untick and track full sheet completion.
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 bg-secondary-50 border border-secondary-200 rounded-lg p-4">

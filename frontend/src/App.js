@@ -1,38 +1,36 @@
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
-
-// Layout Components
-import Layout from './components/Layout/Layout';
-
-// Page Components
-import HomePage from './pages/HomePage';
-import AuthPage from './pages/auth/AuthPage';
-import DashboardPage from './pages/DashboardPage';
-import InterviewPage from './pages/interview/InterviewPage';
-import InterviewSetupPage from './pages/interview/InterviewSetupPage';
-import InterviewSessionPage from './pages/interview/InterviewSessionPage';
-import InterviewResultsPage from './pages/interview/InterviewResultsPage';
-import AIInterviewPage from './pages/interview/AIInterviewPage';
-import AIInterviewSetupPage from './pages/interview/AIInterviewSetupPage';
-import CodingInterviewPage from './pages/interview/CodingInterviewPage';
-import QuickPracticeSetupPage from './pages/quickPractice/QuickPracticeSetupPage';
-import QuickPracticeSessionPage from './pages/quickPractice/QuickPracticeSessionPage';
-import QuickPracticeResultsPage from './pages/quickPractice/QuickPracticeResultsPage';
-import QuickMockSetupPage from './pages/quickMock/QuickMockSetupPage';
-import QuickMockSessionPage from './pages/quickMock/QuickMockSessionPage';
-import QuickMockResultsPage from './pages/quickMock/QuickMockResultsPage';
-import ProfilePage from './pages/ProfilePage';
-import ProgressPage from './pages/ProgressPage';
-import PreparationGuidePage from './pages/PreparationGuidePage';
-import SettingsPage from './pages/SettingsPage';
-import NotFoundPage from './pages/NotFoundPage';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminCodingQuestionsPage from './pages/admin/AdminCodingQuestionsPage';
-import AdminQuickPracticeQuestionsPage from './pages/admin/AdminQuickPracticeQuestionsPage';
-
-// Loading Component
 import LoadingSpinner from './components/UI/LoadingSpinner';
+
+const Layout = lazy(() => import('./components/Layout/Layout'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const InterviewPage = lazy(() => import('./pages/interview/InterviewPage'));
+const InterviewSetupPage = lazy(() => import('./pages/interview/InterviewSetupPage'));
+const InterviewSessionPage = lazy(() => import('./pages/interview/InterviewSessionPage'));
+const InterviewResultsPage = lazy(() => import('./pages/interview/InterviewResultsPage'));
+const AIInterviewPage = lazy(() => import('./pages/interview/AIInterviewPage'));
+const AIInterviewSetupPage = lazy(() => import('./pages/interview/AIInterviewSetupPage'));
+const CodingInterviewPage = lazy(() => import('./pages/interview/CodingInterviewPage'));
+const QuickPracticeSetupPage = lazy(() => import('./pages/quickPractice/QuickPracticeSetupPage'));
+const QuickPracticeSessionPage = lazy(() => import('./pages/quickPractice/QuickPracticeSessionPage'));
+const QuickPracticeResultsPage = lazy(() => import('./pages/quickPractice/QuickPracticeResultsPage'));
+const QuickMockSetupPage = lazy(() => import('./pages/quickMock/QuickMockSetupPage'));
+const QuickMockSessionPage = lazy(() => import('./pages/quickMock/QuickMockSessionPage'));
+const QuickMockResultsPage = lazy(() => import('./pages/quickMock/QuickMockResultsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ProgressPage = lazy(() => import('./pages/ProgressPage'));
+const PreparationGuidePage = lazy(() => import('./pages/PreparationGuidePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminCodingQuestionsPage = lazy(() => import('./pages/admin/AdminCodingQuestionsPage'));
+const AdminQuickPracticeQuestionsPage = lazy(() => import('./pages/admin/AdminQuickPracticeQuestionsPage'));
+const AdminPreparationSheetPage = lazy(() => import('./pages/admin/AdminPreparationSheetPage'));
+const GoogleCallbackPage = lazy(() => import('./pages/auth/GoogleCallbackPage'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -40,7 +38,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center px-2">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -99,6 +97,13 @@ function App() {
   return (
     <SocketProvider>
       <div className="App">
+        <Suspense
+          fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <LoadingSpinner size="lg" text="Loading page..." />
+            </div>
+          }
+        >
         <Routes>
         {/* Public Routes */}
         <Route
@@ -110,6 +115,9 @@ function App() {
           }
         />
         
+        {/* Google OAuth callback – must NOT be wrapped in PublicRoute/ProtectedRoute */}
+        <Route path="/auth/callback" element={<GoogleCallbackPage />} />
+
         {/* Auth Routes - Unified Auth Page */}
         <Route
           path="/login"
@@ -351,9 +359,21 @@ function App() {
           }
         />
 
+        <Route
+          path="/admin/preparation-sheet"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminPreparationSheetPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </Suspense>
       </div>
     </SocketProvider>
   );

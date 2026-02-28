@@ -3,8 +3,19 @@ const { body, validationResult } = require('express-validator');
 const { authenticateToken } = require('../middleware/auth');
 const User = require('../models/User');
 const Progress = require('../models/Progress');
+const Interview = require('../models/Interview');
+const QuickPracticeSession = require('../models/QuickPracticeSession');
+const { MCQSession } = require('../models/MCQQuestion');
+const { computeCurrentStreak, toUtcDayKey } = require('../utils/streak');
 
 const router = express.Router();
+
+const computeTotalTimeSpent = (dailyActivity = []) => {
+  return (Array.isArray(dailyActivity) ? dailyActivity : []).reduce(
+    (sum, activity) => sum + Math.max(0, Number(activity?.timeSpent || 0)),
+    0
+  );
+};
 
 // Helper function to handle validation errors
 const handleValidationErrors = (req, res, next) => {
@@ -176,10 +187,86 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const user = req.user;
     let progress = await Progress.findOne({ userId: user._id });
 
+    // ...existing code...
+    // ...existing code...
+
     // Create progress record if it doesn't exist (fixes cold start issues)
     if (!progress) {
       progress = new Progress({ userId: user._id });
       await progress.save();
+    }
+
+    // ...existing code...
+    // ...existing code...
+    
+    // Show last 3 days of activity for debugging
+    const last3 = progress.dailyActivity.slice(-3).map(a => ({
+      date: toUtcDayKey(a.date),
+      logins: a.logins,
+      interviews: a.interviewsCompleted,
+      questions: a.questionsAttempted,
+      timeSpent: a.timeSpent
+    }));
+    // ...existing code...
+
+    const derivedCurrentStreak = computeCurrentStreak(progress.dailyActivity);
+    // ...existing code...
+    const derivedTotalTimeSpent = computeTotalTimeSpent(progress.dailyActivity);
+    let finalTotalTimeSpent = derivedTotalTimeSpent;
+    let shouldSaveProgress = false;
+
+    if (finalTotalTimeSpent === 0) {
+      const [completedInterviews, completedQuickPractice, completedMcq] = await Promise.all([
+        Interview.find({ userId: user._id, status: 'completed' }).select('totalDuration').lean(),
+        QuickPracticeSession.find({ userId: user._id, status: 'completed' }).select('createdAt completedAt').lean(),
+        MCQSession.find({ userId: user._id, status: 'completed' }).select('timeSpent').lean()
+      ]);
+
+      const interviewMinutes = (completedInterviews || []).reduce((sum, item) => {
+        const sec = Number(item?.totalDuration || 0);
+        if (sec <= 0) return sum;
+        return sum + Math.max(1, Math.round(sec / 60));
+      }, 0);
+
+      const quickPracticeMinutes = (completedQuickPractice || []).reduce((sum, item) => {
+        const start = item?.createdAt ? new Date(item.createdAt).getTime() : 0;
+        const end = item?.completedAt ? new Date(item.completedAt).getTime() : 0;
+        const ms = end > start ? (end - start) : 0;
+        if (ms <= 0) return sum;
+        return sum + Math.max(1, Math.round(ms / 60000));
+      }, 0);
+
+      const mcqMinutes = (completedMcq || []).reduce((sum, item) => {
+        const sec = Number(item?.timeSpent || 0);
+        if (sec <= 0) return sum;
+        return sum + Math.max(1, Math.round(sec / 60));
+      }, 0);
+
+      finalTotalTimeSpent = interviewMinutes + quickPracticeMinutes + mcqMinutes;
+    }
+
+    if ((progress.overallStats?.currentStreak || 0) !== derivedCurrentStreak) {
+      progress.overallStats.currentStreak = derivedCurrentStreak;
+      shouldSaveProgress = true;
+    }
+
+    if (derivedCurrentStreak > (progress.overallStats?.longestStreak || 0)) {
+      progress.overallStats.longestStreak = derivedCurrentStreak;
+      shouldSaveProgress = true;
+    }
+
+    if ((progress.overallStats?.totalTimeSpent || 0) !== finalTotalTimeSpent) {
+      progress.overallStats.totalTimeSpent = finalTotalTimeSpent;
+      shouldSaveProgress = true;
+    }
+
+    if (shouldSaveProgress) {
+      await progress.save();
+    }
+
+    if ((user.stats?.streakDays || 0) !== derivedCurrentStreak) {
+      user.stats.streakDays = derivedCurrentStreak;
+      await user.save();
     }
 
     const stats = {

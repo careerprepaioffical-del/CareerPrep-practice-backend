@@ -520,11 +520,455 @@ const questions = [
     correctIndex: 1,
     explanation: 'Small goals and feedback loops keep momentum and make progress visible.',
     tags: ['motivation', 'habits']
+  },
+
+  // HTML
+  {
+    category: 'html',
+    difficulty: 'easy',
+    prompt: 'Which HTML5 element is used to draw graphics via JavaScript?',
+    options: ['<graphics>', '<canvas>', '<draw>', '<svg>'],
+    correctIndex: 1,
+    explanation: 'The <canvas> element is used in HTML5 to draw graphics, animations, and other visual images on the fly via JavaScript.',
+    tags: ['html5', 'canvas', 'graphics']
+  },
+  {
+    category: 'html',
+    difficulty: 'easy',
+    prompt: 'What is the purpose of the "alt" attribute in an <img> tag?',
+    options: ['To specify the image source', 'To provide alternative text for screen readers', 'To set the image alignment', 'To define the image size'],
+    correctIndex: 1,
+    explanation: 'The "alt" attribute provides alternative text for an image, which is important for accessibility and displays when the image cannot be loaded.',
+    tags: ['html', 'accessibility', 'img']
+  },
+  {
+    category: 'html',
+    difficulty: 'easy',
+    prompt: 'Which semantic HTML5 element would be most appropriate for navigation links?',
+    options: ['<navigation>', '<menu>', '<nav>', '<links>'],
+    correctIndex: 2,
+    explanation: 'The <nav> element is specifically designed to contain navigation links, providing semantic meaning to navigation sections.',
+    tags: ['html5', 'semantic', 'navigation']
+  },
+  {
+    category: 'html',
+    difficulty: 'medium',
+    prompt: 'What does the "defer" attribute do when used with a <script> tag?',
+    options: ['Stops script execution', 'Loads script asynchronously', 'Executes script after HTML parsing', 'Caches the script'],
+    correctIndex: 2,
+    explanation: 'The "defer" attribute tells the browser to download the script but wait until the HTML document has been fully parsed before executing it.',
+    tags: ['html', 'script', 'performance']
+  },
+  {
+    category: 'html',
+    difficulty: 'medium',
+    prompt: 'Which attribute makes a form field required in HTML5?',
+    options: ['mandatory', 'required', 'validate', 'must-fill'],
+    correctIndex: 1,
+    explanation: 'The "required" attribute prevents form submission if the field is empty.',
+    tags: ['html5', 'forms', 'validation']
+  },
+  {
+    category: 'html',
+    difficulty: 'hard',
+    prompt: 'What is the recommended way to include multiple alternate stylesheets that the user can select?',
+    options: ['Use multiple <style> tags', 'Use <link rel="alternate stylesheet"> with different titles', 'Use inline styles only', 'Embed CSS in JavaScript'],
+    correctIndex: 1,
+    explanation: 'The "alternate stylesheet" link relation with different title attributes allows users to switch between style options.',
+    tags: ['html', 'css', 'accessibility']
+  },
+  {
+    category: 'html',
+    difficulty: 'easy',
+    prompt: 'Which HTML element is used to define a table header cell?',
+    options: ['<thead>', '<th>', '<header>', '<td>'],
+    correctIndex: 1,
+    explanation: 'The <th> element defines a header cell in a table, typically displayed in bold and centered.',
+    tags: ['html', 'tables']
+  },
+  {
+    category: 'html',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of the "data-*" attributes in HTML5?',
+    options: ['To encrypt data', 'To store custom data private to the page or application', 'To validate forms', 'To define database schemas'],
+    correctIndex: 1,
+    explanation: 'data-* attributes allow you to store extra information on HTML elements that can be accessed via JavaScript.',
+    tags: ['html5', 'data-attributes', 'javascript']
+  },
+
+  // CSS
+  {
+    category: 'css',
+    difficulty: 'easy',
+    prompt: 'Which CSS property is used to change the text color of an element?',
+    options: ['text-color', 'font-color', 'color', 'text-style'],
+    correctIndex: 2,
+    explanation: 'The "color" property in CSS is used to set the text color of an element.',
+    tags: ['css', 'text', 'color']
+  },
+  {
+    category: 'css',
+    difficulty: 'easy',
+    prompt: 'Which CSS selector selects elements with a specific class?',
+    options: ['#classname', '.classname', '*classname', 'classname'],
+    correctIndex: 1,
+    explanation: 'The class selector in CSS uses a dot (.) followed by the class name to select elements with that specific class.',
+    tags: ['css', 'selectors']
+  },
+  {
+    category: 'css',
+    difficulty: 'medium',
+    prompt: 'What is the CSS Flexbox property that controls the main axis alignment of items?',
+    options: ['align-items', 'justify-content', 'flex-direction', 'align-content'],
+    correctIndex: 1,
+    explanation: 'justify-content aligns flex items along the main axis (horizontal by default).',
+    tags: ['css', 'flexbox', 'layout']
+  },
+  {
+    category: 'css',
+    difficulty: 'medium',
+    prompt: 'What does the CSS "box-sizing: border-box" property do?',
+    options: ['Removes all borders', 'Includes padding and border in the element\'s total width and height', 'Only applies to <div> elements', 'Disables margin'],
+    correctIndex: 1,
+    explanation: 'border-box makes width/height include padding and border, making sizing calculations easier.',
+    tags: ['css', 'box-model', 'sizing']
+  },
+  {
+    category: 'css',
+    difficulty: 'medium',
+    prompt: 'Which CSS property is used to create a grid layout?',
+    options: ['display: flex', 'display: grid', 'display: table', 'display: inline-block'],
+    correctIndex: 1,
+    explanation: 'display: grid enables CSS Grid Layout for creating complex two-dimensional layouts.',
+    tags: ['css', 'grid', 'layout']
+  },
+  {
+    category: 'css',
+    difficulty: 'hard',
+    prompt: 'What is CSS specificity used for when multiple rules target the same element?',
+    options: ['To determine animation speed', 'To calculate which rule takes precedence', 'To set font size', 'To enable responsive design'],
+    correctIndex: 1,
+    explanation: 'Specificity determines which CSS rule is applied when multiple rules match. Higher specificity wins.',
+    tags: ['css', 'specificity', 'cascade']
+  },
+  {
+    category: 'css',
+    difficulty: 'easy',
+    prompt: 'Which CSS unit is relative to the font-size of the root element?',
+    options: ['em', 'rem', 'px', '%'],
+    correctIndex: 1,
+    explanation: 'rem (root em) is relative to the root element\'s font-size, providing consistent sizing.',
+    tags: ['css', 'units', 'rem']
+  },
+  {
+    category: 'css',
+    difficulty: 'medium',
+    prompt: 'What does the CSS "position: sticky" property do?',
+    options: ['Makes element unmovable forever', 'Toggles between relative and fixed based on scroll position', 'Removes element from document flow', 'Centers the element'],
+    correctIndex: 1,
+    explanation: 'position: sticky acts like relative positioning until a scroll threshold, then becomes fixed.',
+    tags: ['css', 'positioning', 'sticky']
+  },
+
+  // JavaScript
+  {
+    category: 'javascript',
+    difficulty: 'easy',
+    prompt: 'Which keyword is used to declare a block-scoped variable in JavaScript?',
+    options: ['var', 'let', 'const', 'define'],
+    correctIndex: 1,
+    explanation: '"let" declares a block-scoped variable that can be reassigned. "const" is also block-scoped but cannot be reassigned.',
+    tags: ['javascript', 'variables', 'scope']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'easy',
+    prompt: 'What is the result of: typeof null?',
+    options: ['"null"', '"object"', '"undefined"', '"number"'],
+    correctIndex: 1,
+    explanation: 'This is a well-known JavaScript quirk: typeof null returns "object" due to a legacy bug.',
+    tags: ['javascript', 'typeof', 'quirks']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'medium',
+    prompt: 'What does the Array.map() method return?',
+    options: ['The original array modified', 'A new array with transformed elements', 'A single value', 'undefined'],
+    correctIndex: 1,
+    explanation: 'Array.map() creates a new array with the results of calling a function on every element.',
+    tags: ['javascript', 'arrays', 'map']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'medium',
+    prompt: 'What is a closure in JavaScript?',
+    options: ['A syntax error', 'A function that has access to variables from its outer scope', 'A way to close files', 'A loop statement'],
+    correctIndex: 1,
+    explanation: 'A closure is created when a function accesses variables from its enclosing lexical scope.',
+    tags: ['javascript', 'closures', 'scope']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of the "async" keyword in JavaScript?',
+    options: ['To run code faster', 'To declare a function that returns a Promise', 'To make synchronous code', 'To disable await'],
+    correctIndex: 1,
+    explanation: 'The async keyword makes a function return a Promise and allows the use of await inside it.',
+    tags: ['javascript', 'async', 'promises']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'hard',
+    prompt: 'What is the event loop in JavaScript?',
+    options: ['A type of loop structure', 'A mechanism that handles asynchronous callbacks by managing call stack and callback queue', 'A way to debug code', 'A CSS animation'],
+    correctIndex: 1,
+    explanation: 'The event loop processes callbacks from the queue when the call stack is empty, enabling non-blocking I/O.',
+    tags: ['javascript', 'event-loop', 'async']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'easy',
+    prompt: 'Which method adds one or more elements to the end of an array?',
+    options: ['push()', 'pop()', 'shift()', 'unshift()'],
+    correctIndex: 0,
+    explanation: 'Array.push() adds elements to the end and returns the new length.',
+    tags: ['javascript', 'arrays']
+  },
+  {
+    category: 'javascript',
+    difficulty: 'medium',
+    prompt: 'What is the difference between "==" and "===" in JavaScript?',
+    options: ['They are identical', '"==" performs type coercion, "===" does not', '"===" is slower', '"==" is deprecated'],
+    correctIndex: 1,
+    explanation: '"==" compares with type conversion while "===" checks both value and type without conversion.',
+    tags: ['javascript', 'operators', 'comparison']
+  },
+
+  // React
+  {
+    category: 'react',
+    difficulty: 'easy',
+    prompt: 'What hook is used to manage state in a functional React component?',
+    options: ['useEffect', 'useState', 'useContext', 'useReducer'],
+    correctIndex: 1,
+    explanation: 'useState is the primary hook for adding state to functional components.',
+    tags: ['react', 'hooks', 'state']
+  },
+  {
+    category: 'react',
+    difficulty: 'easy',
+    prompt: 'What is JSX in React?',
+    options: ['A database query language', 'A syntax extension that looks like HTML but is JavaScript', 'A CSS framework', 'A testing library'],
+    correctIndex: 1,
+    explanation: 'JSX allows you to write HTML-like syntax in JavaScript, which React transforms into function calls.',
+    tags: ['react', 'jsx']
+  },
+  {
+    category: 'react',
+    difficulty: 'medium',
+    prompt: 'When should you use the useEffect hook?',
+    options: ['To declare state variables', 'To perform side effects like data fetching or subscriptions', 'To render JSX', 'To define props'],
+    correctIndex: 1,
+    explanation: 'useEffect runs after render and is used for side effects like API calls, subscriptions, or DOM manipulation.',
+    tags: ['react', 'hooks', 'useEffect']
+  },
+  {
+    category: 'react',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of the "key" prop in React lists?',
+    options: ['To encrypt data', 'To help React identify which items have changed, added, or removed', 'To set CSS styles', 'To pass data to components'],
+    correctIndex: 1,
+    explanation: 'Keys help React optimize rendering by tracking element identity across renders.',
+    tags: ['react', 'lists', 'keys']
+  },
+  {
+    category: 'react',
+    difficulty: 'medium',
+    prompt: 'What is prop drilling in React?',
+    options: ['A performance optimization', 'Passing props through multiple levels of components', 'A testing technique', 'A state management library'],
+    correctIndex: 1,
+    explanation: 'Prop drilling occurs when you pass props through intermediate components that don\'t use them, just to reach deeper components.',
+    tags: ['react', 'props', 'patterns']
+  },
+  {
+    category: 'react',
+    difficulty: 'hard',
+    prompt: 'What is the purpose of React.memo()?',
+    options: ['To store data in localStorage', 'To prevent unnecessary re-renders by memoizing component output', 'To create class components', 'To handle routing'],
+    correctIndex: 1,
+    explanation: 'React.memo() is a higher-order component that memoizes the result, re-rendering only when props change.',
+    tags: ['react', 'performance', 'memoization']
+  },
+  {
+    category: 'react',
+    difficulty: 'easy',
+    prompt: 'Which hook would you use to access context in a functional component?',
+    options: ['useState', 'useEffect', 'useContext', 'useRef'],
+    correctIndex: 2,
+    explanation: 'useContext allows you to consume context values without wrapping components.',
+    tags: ['react', 'hooks', 'context']
+  },
+  {
+    category: 'react',
+    difficulty: 'medium',
+    prompt: 'What is the Virtual DOM in React?',
+    options: ['A real DOM copy in memory', 'A lightweight JavaScript representation of the actual DOM', 'A browser API', 'A CSS framework'],
+    correctIndex: 1,
+    explanation: 'The Virtual DOM is a programming concept where a virtual representation is synced with the real DOM through reconciliation.',
+    tags: ['react', 'virtual-dom', 'performance']
+  },
+
+  // Node.js
+  {
+    category: 'nodejs',
+    difficulty: 'easy',
+    prompt: 'What is the purpose of package.json in a Node.js project?',
+    options: ['To store CSS styles', 'To define project metadata and dependencies', 'To compile JavaScript', 'To create databases'],
+    correctIndex: 1,
+    explanation: 'package.json contains project metadata, dependencies, scripts, and configuration.',
+    tags: ['nodejs', 'npm', 'package']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'easy',
+    prompt: 'Which module system does Node.js use by default?',
+    options: ['ES Modules', 'CommonJS', 'AMD', 'UMD'],
+    correctIndex: 1,
+    explanation: 'Node.js traditionally uses CommonJS (require/module.exports), though ES Modules are now supported.',
+    tags: ['nodejs', 'modules', 'commonjs']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'medium',
+    prompt: 'What is the event loop in Node.js responsible for?',
+    options: ['Compiling JavaScript', 'Handling asynchronous operations and callbacks', 'Managing memory allocation', 'Creating threads'],
+    correctIndex: 1,
+    explanation: 'The event loop allows Node.js to perform non-blocking I/O operations by offloading operations to the system kernel.',
+    tags: ['nodejs', 'event-loop', 'async']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'medium',
+    prompt: 'What is middleware in Express.js?',
+    options: ['A database driver', 'Functions that have access to request/response objects in the request-response cycle', 'A templating engine', 'A CSS preprocessor'],
+    correctIndex: 1,
+    explanation: 'Middleware functions can execute code, modify request/response objects, end the cycle, or call the next middleware.',
+    tags: ['nodejs', 'express', 'middleware']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of the "process.env" object in Node.js?',
+    options: ['To manage DOM events', 'To access environment variables', 'To create child processes', 'To handle errors'],
+    correctIndex: 1,
+    explanation: 'process.env provides access to environment variables for configuration.',
+    tags: ['nodejs', 'environment', 'config']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'hard',
+    prompt: 'What is the difference between process.nextTick() and setImmediate()?',
+    options: ['They are identical', 'nextTick() executes before I/O events, setImmediate() after', 'setImmediate() runs synchronously', 'nextTick() is deprecated'],
+    correctIndex: 1,
+    explanation: 'process.nextTick() fires before any I/O events, while setImmediate() executes in the check phase after I/O events.',
+    tags: ['nodejs', 'event-loop', 'timing']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'easy',
+    prompt: 'Which command installs a package and saves it to dependencies in package.json?',
+    options: ['npm add', 'npm install <package>', 'npm get', 'npm fetch'],
+    correctIndex: 1,
+    explanation: 'npm install (or npm i) installs packages and adds them to dependencies by default.',
+    tags: ['nodejs', 'npm', 'packages']
+  },
+  {
+    category: 'nodejs',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of the Buffer class in Node.js?',
+    options: ['To handle CSS', 'To handle binary data', 'To create animations', 'To validate forms'],
+    correctIndex: 1,
+    explanation: 'Buffer provides a way to work with binary data directly in Node.js, useful for file operations and network protocols.',
+    tags: ['nodejs', 'buffer', 'binary']
+  },
+
+  // General
+  {
+    category: 'general',
+    difficulty: 'easy',
+    prompt: 'What does API stand for?',
+    options: ['Application Programming Interface', 'Advanced Programming Integration', 'Automated Program Interaction', 'Application Process Integration'],
+    correctIndex: 0,
+    explanation: 'API stands for Application Programming Interface, a set of rules allowing different software to communicate.',
+    tags: ['general', 'api', 'basics']
+  },
+  {
+    category: 'general',
+    difficulty: 'easy',
+    prompt: 'What is version control used for in software development?',
+    options: ['To increase processing speed', 'To track changes to code over time and enable collaboration', 'To compile programs', 'To design user interfaces'],
+    correctIndex: 1,
+    explanation: 'Version control systems like Git help track code history, collaborate, and manage different versions.',
+    tags: ['general', 'git', 'version-control']
+  },
+  {
+    category: 'general',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of a RESTful API?',
+    options: ['To create desktop applications', 'To provide a stateless communication protocol between client and server', 'To compile code', 'To manage databases only'],
+    correctIndex: 1,
+    explanation: 'REST is an architectural style for web services using HTTP methods and stateless communication.',
+    tags: ['general', 'rest', 'api']
+  },
+  {
+    category: 'general',
+    difficulty: 'medium',
+    prompt: 'What is continuous integration (CI)?',
+    options: ['A type of database', 'A practice of automatically building and testing code changes frequently', 'A programming language', 'A design pattern'],
+    correctIndex: 1,
+    explanation: 'CI involves automatically building and testing code when changes are committed to catch issues early.',
+    tags: ['general', 'ci', 'devops']
+  },
+  {
+    category: 'general',
+    difficulty: 'medium',
+    prompt: 'What is the main purpose of unit testing?',
+    options: ['To test the entire application end-to-end', 'To test individual components or functions in isolation', 'To test network connectivity', 'To test user interfaces only'],
+    correctIndex: 1,
+    explanation: 'Unit tests verify individual units of code work correctly in isolation, catching bugs early.',
+    tags: ['general', 'testing', 'unit-tests']
+  },
+  {
+    category: 'general',
+    difficulty: 'hard',
+    prompt: 'What is technical debt?',
+    options: ['Money owed to software vendors', 'The implied cost of future refactoring due to choosing quick solutions over better approaches', 'The cost of cloud hosting', 'A type of software license'],
+    correctIndex: 1,
+    explanation: 'Technical debt represents the future cost of rework needed when shortcuts are taken in development.',
+    tags: ['general', 'technical-debt', 'engineering']
+  },
+  {
+    category: 'general',
+    difficulty: 'easy',
+    prompt: 'What does IDE stand for?',
+    options: ['Internet Development Environment', 'Integrated Development Environment', 'Interactive Design Editor', 'Internal Database Engine'],
+    correctIndex: 1,
+    explanation: 'IDE stands for Integrated Development Environment, software for building applications with tools like code editor, debugger, etc.',
+    tags: ['general', 'tools', 'ide']
+  },
+  {
+    category: 'general',
+    difficulty: 'medium',
+    prompt: 'What is the purpose of code review in software development?',
+    options: ['To slow down development', 'To catch bugs, share knowledge, and maintain code quality', 'To assign blame for errors', 'To replace testing'],
+    correctIndex: 1,
+    explanation: 'Code reviews help find issues early, spread knowledge across the team, and ensure consistent quality standards.',
+    tags: ['general', 'code-review', 'collaboration']
   }
 ];
 
 async function main() {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/prepiq';
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/CareerPrep AI';
   await mongoose.connect(mongoUri);
 
   const ops = questions.map((q) => ({
@@ -540,7 +984,7 @@ async function main() {
   const inserted = result.upsertedCount || 0;
   const matched = result.matchedCount || 0;
 
-  console.log(`✅ Quick Mock seed complete: inserted ${inserted}, already-existed ${matched}.`);
+  console.log(`Quick Mock seed complete: inserted ${inserted}, already-existed ${matched}.`);
 }
 
 main()

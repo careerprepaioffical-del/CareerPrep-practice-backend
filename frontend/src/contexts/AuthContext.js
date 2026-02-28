@@ -106,6 +106,14 @@ export const AuthProvider = ({ children }) => {
       if (didInitRef.current) return;
       didInitRef.current = true;
 
+      // On the Google OAuth callback page the token arrives via URL query param.
+      // loginWithToken() in GoogleCallbackPage handles everything — skip here to
+      // avoid a competing /auth/me request that can race and hard-redirect to /login.
+      if (window.location.pathname.includes('/auth/callback')) {
+        dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+        return;
+      }
+
       const token = localStorage.getItem('token');
       const cachedUser = safeJsonParse(localStorage.getItem('user'), null);
       
@@ -127,7 +135,6 @@ export const AuthProvider = ({ children }) => {
             dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
           }
 
-        
           // Verify token and refresh user data (ensures roles/subscription are current)
           try {
             const response = await api.get('/auth/me');
@@ -232,39 +239,66 @@ export const AuthProvider = ({ children }) => {
         const toastId = 'waking-server';
         toast.loading('Server is starting (Render cold start)… retrying in a moment.', { id: toastId });
 
+        const tryLoginAgain = async () => {
+          const retryResponse = await api.post(
+            '/auth/login',
+            { email, password },
+            { skipNetworkToast: true }
+          );
+          const { user, token } = retryResponse.data.data;
+
+          setToken(token);
+          localStorage.setItem('user', JSON.stringify(user));
+          dispatch({
+            type: AUTH_ACTIONS.LOGIN_SUCCESS,
+            payload: { user, token },
+          });
+
+          toast.dismiss(toastId);
+          toast.success('Login successful!');
+          return { success: true };
+        };
+
         const woke = await wakeServer({ maxWaitMs: 25000, attemptTimeoutMs: 8000 });
         if (woke) {
           try {
-            const retryResponse = await api.post(
-              '/auth/login',
-              { email, password },
-              { skipNetworkToast: true }
-            );
-            const { user, token } = retryResponse.data.data;
-
-            setToken(token);
-            localStorage.setItem('user', JSON.stringify(user));
-            dispatch({
-              type: AUTH_ACTIONS.LOGIN_SUCCESS,
-              payload: { user, token },
-            });
-
-            toast.dismiss(toastId);
-            toast.success('Login successful!');
-            return { success: true };
+            return await tryLoginAgain();
           } catch (retryError) {
             toast.dismiss(toastId);
             const retryMessage =
               retryError.response?.data?.message ||
-              'Server is still starting. Please try again in 10–20 seconds.';
+              'Unable to complete login right now. Please try again.';
             dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: retryMessage });
             toast.error(retryMessage);
             return { success: false, error: retryMessage };
           }
         }
 
+        // Fallback probe: if wake check failed but API is actually reachable, try login once more.
+        try {
+          await api.get('/health', {
+            timeout: 5000,
+            skipNetworkToast: true,
+            skipErrorToast: true,
+          });
+
+          try {
+            return await tryLoginAgain();
+          } catch (retryError) {
+            toast.dismiss(toastId);
+            const retryMessage =
+              retryError.response?.data?.message ||
+              'Unable to complete login right now. Please try again.';
+            dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: retryMessage });
+            toast.error(retryMessage);
+            return { success: false, error: retryMessage };
+          }
+        } catch {
+          // health check failed; fall through to connection message
+        }
+
         toast.dismiss(toastId);
-        const wakeMessage = 'Server is still starting. Please try again in 10–20 seconds.';
+        const wakeMessage = 'Unable to reach server. Please make sure backend is running and try again.';
         dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: wakeMessage });
         toast.error(wakeMessage);
         return { success: false, error: wakeMessage };
@@ -278,12 +312,12 @@ export const AuthProvider = ({ children }) => {
   }, [setToken]);
 
   // Register function
-  const register = useCallback(async (name, email, password) => {
+  const register = useCallback(async (name, email, password, otp) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await api.post('/auth/register', { name, email, password });
+      const response = await api.post('/auth/register', { name, email, password, otp });
       const { user, token } = response.data.data;
 
       // Set token
@@ -308,6 +342,109 @@ export const AuthProvider = ({ children }) => {
     }
   }, [setToken]);
 
+  // Request signup OTP
+  const requestSignupOtp = useCallback(async (email) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+      await api.post(
+        '/auth/request-otp',
+        { email },
+        { skipNetworkToast: true }
+      );
+      toast.success('OTP sent to your email');
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  const requestPasswordResetOtp = useCallback(async (email) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+      await api.post('/auth/request-password-reset-otp', { email }, { skipNetworkToast: true });
+      toast.success('If this email is registered, an OTP has been sent.');
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  const resetPasswordWithOtp = useCallback(async ({ email, otp, newPassword }) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+      await api.post('/auth/reset-password', { email, otp, newPassword }, { skipNetworkToast: true });
+      toast.success('Password reset successful. Please sign in.');
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to reset password';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  // Google login/signup (popup / id-token flow – kept for backward compat)
+  const loginWithGoogle = useCallback(async (idToken) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await api.post('/auth/google', { idToken }, { skipNetworkToast: true });
+      const { user, token } = response.data.data;
+
+      setToken(token);
+      localStorage.setItem('user', JSON.stringify(user));
+      dispatch({
+        type: AUTH_ACTIONS.LOGIN_SUCCESS,
+        payload: { user, token },
+      });
+
+      toast.success('Login successful!');
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Google login failed';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, [setToken]);
+
+  // Login with a JWT token received from the server-side Google OAuth redirect flow
+  const loginWithToken = useCallback(async (token) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      setToken(token);
+
+      const response = await api.get('/auth/me');
+      const freshUser = response?.data?.data?.user;
+      if (!freshUser) throw new Error('Could not load user data after Google login');
+
+      localStorage.setItem('user', JSON.stringify(freshUser));
+      dispatch({
+        type: AUTH_ACTIONS.LOGIN_SUCCESS,
+        payload: { user: freshUser, token },
+      });
+
+      toast.success('Login successful!');
+      return { success: true };
+    } catch (error) {
+      setToken(null);
+      const errorMessage = error.response?.data?.message || 'Google login failed';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, [setToken]);
+
+
   // Logout function
   const logout = useCallback(async () => {
     try {
@@ -319,6 +456,8 @@ export const AuthProvider = ({ children }) => {
       // Clear token and state regardless of API call result
       setToken(null);
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+      dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: { user: null, token: null } });
       toast.success('Logged out successfully');
     }
   }, [setToken]);
@@ -368,6 +507,11 @@ export const AuthProvider = ({ children }) => {
       // Actions
       login,
       register,
+      requestSignupOtp,
+      requestPasswordResetOtp,
+      resetPasswordWithOtp,
+      loginWithGoogle,
+      loginWithToken,
       logout,
       updateUser,
       clearError,
@@ -381,8 +525,13 @@ export const AuthProvider = ({ children }) => {
     hasSubscription,
     isAuthenticated,
     login,
+    loginWithGoogle,
+    loginWithToken,
     logout,
     register,
+    requestSignupOtp,
+    requestPasswordResetOtp,
+    resetPasswordWithOtp,
     state.error,
     state.loading,
     state.token,

@@ -6,7 +6,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const passport = require('passport');
 require('dotenv').config();
+
+const User = require('./models/User');
 
 let MongoMemoryServer;
 try {
@@ -26,6 +30,7 @@ const mcqRoutes = require('./routes/mcq');
 
 const app = express();
 const server = http.createServer(app);
+const chatRoutes = require('./routes/chat');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -101,6 +106,22 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Session (needed only for Passport OAuth state during the redirect flow)
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'session-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: isProduction,
+      httpOnly: true,
+      maxAge: 10 * 60 * 1000, // 10 minutes – just long enough for the OAuth round-trip
+    },
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/prepiq';
 let mongoMemoryServer = null;
 
@@ -111,6 +132,7 @@ app.use('/api/interviews', interviewRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/mcq', require('./middleware/auth').authenticateToken, mcqRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/realtime', require('./routes/realtime'));
 app.use('/api/ai-interview', require('./routes/aiInterview'));
 app.use('/api/coding', require('./routes/coding'));
@@ -118,12 +140,14 @@ app.use('/api/execute', require('./routes/execute'));
 app.use('/api/admin/coding-questions', require('./routes/adminCodingQuestions'));
 app.use('/api/quick-practice', require('./routes/quickPractice'));
 app.use('/api/admin/quick-practice-questions', require('./routes/adminQuickPracticeQuestions'));
+app.use('/api/preparation-sheet', require('./routes/preparationSheet'));
+app.use('/api/admin/preparation-sheet', require('./routes/adminPreparationSheet'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
-    message: 'CareerPrep API is running',
+    message: 'PrepIQ API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
@@ -189,6 +213,47 @@ server.on('error', (err) => {
   process.exit(1);
 });
 
+// Auto-promote admin users from environment variable
+const promoteAdminsFromEnv = async () => {
+  try {
+    const adminEmails = process.env.ADMIN_EMAILS;
+    if (!adminEmails || adminEmails.trim() === '') {
+      return; // No admin emails configured
+    }
+
+    const emailList = adminEmails
+      .split(',')
+      .map(email => email.trim().toLowerCase())
+      .filter(email => email.length > 0); // Remove empty strings
+
+    if (emailList.length === 0) {
+      return;
+    }
+
+    console.log(`Checking admin configuration for ${emailList.length} email(s)...`);
+
+    for (const email of emailList) {
+      const user = await User.findOne({ email });
+      
+      if (!user) {
+        console.log(`⚠️  Admin email not found (user must register first): ${email}`);
+        continue;
+      }
+
+      if (user.role === 'admin') {
+        console.log(`Already admin: ${email}`);
+      } else {
+        user.role = 'admin';
+        await user.save();
+        console.log(`Promoted to admin: ${email}`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error promoting admins:', err.message);
+    // Don't fail server startup if admin promotion fails
+  }
+};
+
 const start = async () => {
   try {
     try {
@@ -201,7 +266,7 @@ const start = async () => {
         maxPoolSize: isProduction ? 10 : 5,
         minPoolSize: isProduction ? 2 : 1,
       });
-      console.log('✅ MongoDB connected successfully');
+      console.log('MongoDB connected successfully');
     } catch (err) {
       const allowInMemory = !isProduction && process.env.USE_IN_MEMORY_MONGO !== 'false';
 
@@ -214,16 +279,19 @@ const start = async () => {
           useUnifiedTopology: true,
           serverSelectionTimeoutMS: 5000,
         });
-        console.log('✅ In-memory MongoDB started successfully');
+        console.log('In-memory MongoDB started successfully');
       } else {
         throw err;
       }
     }
 
+    // Auto-promote admin users from ADMIN_EMAILS environment variable
+    await promoteAdminsFromEnv();
+
     server.listen(PORT, () => {
-      console.log(`🚀 PrepIQ Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 API URL: http://localhost:${PORT}/api`);
+      console.log(`PrepIQ Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`API URL: http://localhost:${PORT}/api`);
       console.log(`🔌 Socket.IO enabled for real-time features`);
     });
   } catch (err) {

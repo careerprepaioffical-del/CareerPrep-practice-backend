@@ -39,19 +39,19 @@ const topicIcons = {
 };
 
 const topicColors = {
-  dsa: 'from-blue-500 to-cyan-600',
-  oop: 'from-purple-500 to-pink-600',
-  dbms: 'from-green-500 to-emerald-600',
-  os: 'from-orange-500 to-red-600',
-  networks: 'from-indigo-500 to-purple-600',
-  'system-design': 'from-yellow-500 to-orange-600',
-  behavioral: 'from-teal-500 to-blue-600',
-  html: 'from-orange-500 to-red-600',
-  css: 'from-blue-500 to-purple-600',
-  javascript: 'from-yellow-500 to-orange-600',
-  react: 'from-cyan-500 to-blue-600',
-  nodejs: 'from-green-500 to-emerald-600',
-  general: 'from-purple-500 to-pink-600'
+  dsa: 'from-blue-600 to-blue-700',
+  oop: 'from-blue-600 to-blue-700',
+  dbms: 'from-blue-600 to-blue-700',
+  os: 'from-blue-600 to-blue-700',
+  networks: 'from-blue-600 to-blue-700',
+  'system-design': 'from-blue-600 to-blue-700',
+  behavioral: 'from-blue-600 to-blue-700',
+  html: 'from-blue-600 to-blue-700',
+  css: 'from-blue-600 to-blue-700',
+  javascript: 'from-blue-600 to-blue-700',
+  react: 'from-blue-600 to-blue-700',
+  nodejs: 'from-blue-600 to-blue-700',
+  general: 'from-blue-600 to-blue-700'
 };
 
 const QuickMockResultsPage = () => {
@@ -118,7 +118,7 @@ const QuickMockResultsPage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mock-interview-results-${sessionId}.json`;
+    a.download = `mock-test-results-${sessionId}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -129,7 +129,7 @@ const QuickMockResultsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Loading results...</p>
@@ -140,7 +140,7 @@ const QuickMockResultsPage = () => {
 
   if (!results) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <p className="text-slate-600">Results not found</p>
@@ -154,12 +154,12 @@ const QuickMockResultsPage = () => {
   const totalQuestions = results.review?.length || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white"
+        className="rounded-[20px] border border-blue-200 bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 text-white mb-6 overflow-hidden"
       >
         <div className="max-w-6xl mx-auto px-6 py-12">
           <div className="text-center">
@@ -172,9 +172,9 @@ const QuickMockResultsPage = () => {
               <Award className="w-12 h-12 text-white" />
             </motion.div>
             
-            <h1 className="text-4xl font-bold mb-3">Interview Complete!</h1>
-            <p className="text-blue-100 text-lg mb-6">
-              Here's how you performed in your Quick Mock Interview
+            <h1 className="text-4xl font-bold mb-3">Test Complete!</h1>
+            <p className="text-blue-100 text-lg">
+              Here's how you performed in your Quick Mock Test
             </p>
             
             <div className="flex items-center justify-center space-x-2">
@@ -186,13 +186,13 @@ const QuickMockResultsPage = () => {
         </div>
       </motion.div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-2 sm:py-4">
         {/* Score Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 mb-8"
+          className="bg-white rounded-[20px] shadow-card p-8 border border-slate-200 mb-8"
         >
           <div className="text-center mb-8">
             <div className="relative inline-block">
@@ -232,7 +232,17 @@ const QuickMockResultsPage = () => {
                 <Clock className="w-5 h-5 text-white" />
               </div>
               <div className="text-2xl font-bold text-green-600">
-                {formatTime(Math.round((new Date(results.completedAt) - new Date(results.completedAt)) / 1000))}
+                {formatTime(
+                  Math.max(
+                    0,
+                    Math.round(
+                      (
+                        new Date(results.completedAt).getTime() -
+                        new Date(results.startedAt || results.createdAt || results.completedAt).getTime()
+                      ) / 1000
+                    )
+                  )
+                )}
               </div>
               <div className="text-sm text-slate-600">Completed</div>
             </div>
@@ -265,7 +275,7 @@ const QuickMockResultsPage = () => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200"
+            className="bg-white rounded-[20px] shadow-card p-6 border border-slate-200"
           >
             <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
               <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
@@ -339,7 +349,7 @@ const QuickMockResultsPage = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200"
+            className="bg-white rounded-[20px] shadow-card p-6 border border-slate-200"
           >
             <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
               <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
@@ -356,7 +366,7 @@ const QuickMockResultsPage = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 * index }}
-                    className={`p-4 rounded-xl border ${
+                    className={`p-4 rounded-xl border transition-colors duration-200 ${
                       response.isCorrect 
                         ? 'border-green-200 bg-green-50' 
                         : 'border-red-200 bg-red-50'
@@ -412,12 +422,12 @@ const QuickMockResultsPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-xl p-6 border border-slate-200 mt-8"
+          className="bg-white rounded-[20px] shadow-card p-6 border border-slate-200 mt-8"
         >
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => navigate('/quick-mock')}
-              className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+              className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md"
             >
               <RotateCcw className="w-5 h-5" />
               <span>Try Another Mock</span>
@@ -425,7 +435,7 @@ const QuickMockResultsPage = () => {
             
             <button
               onClick={downloadResults}
-              className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+              className="flex items-center justify-center space-x-2 px-6 py-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold transition-all duration-200"
             >
               <Download className="w-5 h-5" />
               <span>Download Results</span>
@@ -433,7 +443,7 @@ const QuickMockResultsPage = () => {
             
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center justify-center space-x-2 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors"
+              className="flex items-center justify-center space-x-2 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
             >
               <span>Back to Dashboard</span>
             </button>

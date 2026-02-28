@@ -40,7 +40,7 @@ const InterviewSetupPage = () => {
           difficulty: config.difficulty,
           questionTypes: ['coding'],
           language: config.language,
-          numberOfQuestions: 1
+          numberOfQuestions: config.numberOfQuestions
         }
       };
 
@@ -133,6 +133,23 @@ const InterviewSetupPage = () => {
                   <option value="javascript">JavaScript</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
+                  Number of Questions
+                </label>
+                <select
+                  value={config.numberOfQuestions}
+                  onChange={(e) => setConfig({ ...config, numberOfQuestions: parseInt(e.target.value, 10) })}
+                  className="input"
+                >
+                  <option value={1}>1 question</option>
+                  <option value={2}>2 questions</option>
+                  <option value={3}>3 questions</option>
+                  <option value={5}>5 questions</option>
+                  <option value={7}>7 questions</option>
+                  <option value={10}>10 questions</option>
+                </select>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -164,7 +181,7 @@ const InterviewSetupPage = () => {
               <div className="flex justify-between">
                 <span className="text-secondary-600">Questions:</span>
                 <span className="font-medium text-secondary-900">
-                  1
+                  {config.numberOfQuestions}
                 </span>
               </div>
               <div className="flex justify-between">

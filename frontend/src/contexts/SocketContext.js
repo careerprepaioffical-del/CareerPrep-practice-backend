@@ -73,7 +73,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('🔌 Connection error:', error);
+      console.error('[socket] Connection error:', error);
       setConnected(false);
 
       const path = window.location.pathname || '';
@@ -101,7 +101,7 @@ export const SocketProvider = ({ children }) => {
     if (socket && sessionId) {
       socket.emit('join-interview', sessionId);
       setCurrentSession(sessionId);
-      console.log(`🎯 Joined interview session: ${sessionId}`);
+      console.log(`[socket] Joined interview session: ${sessionId}`);
     }
   };
 
@@ -110,8 +110,7 @@ export const SocketProvider = ({ children }) => {
     if (socket && currentSession) {
       socket.emit('leave-interview', currentSession);
       setCurrentSession(null);
-      console.log(`🎯 Left interview session: ${currentSession}`);
-    }
+      console.log(`[socket] Left interview session: ${currentSession}`);    }
   };
 
   // Send code update

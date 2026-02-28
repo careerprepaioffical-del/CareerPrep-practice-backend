@@ -23,6 +23,7 @@ const quickPracticeSessionSchema = new mongoose.Schema(
     status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
     categories: { type: [String], default: [] },
     totalQuestions: { type: Number, required: true },
+    timePerQuestion: { type: Number, default: 60 }, // Time limit per question in seconds
     questions: { type: [quickPracticeSessionQuestionSchema], default: [] },
     answers: {
       type: [

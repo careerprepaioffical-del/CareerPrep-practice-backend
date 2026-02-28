@@ -254,12 +254,10 @@ int main() {
         
         if (passed === total && total > 0) {
           toast.success(`All tests passed! Score: ${percentage}%`, {
-            icon: '🎉',
             duration: 3000
           });
         } else {
           toast(`${passed}/${total} tests passed. Score: ${percentage}%`, {
-            icon: passed > 0 ? '⚡' : '❌',
             duration: 2000
           });
         }
@@ -287,7 +285,6 @@ int main() {
   useEffect(() => {
     if (realtimeData.progressSaved) {
       toast.success('Progress auto-saved', {
-        icon: '💾',
         duration: 1500
       });
       clearRealtimeData('progressSaved');
@@ -456,9 +453,7 @@ int main() {
       const result = response?.data;
       
       if (result.success) {
-        toast.success('Progress saved successfully!', {
-          icon: '💾'
-        });
+        toast.success('Progress saved successfully!');
       } else {
         toast.error('Failed to save progress');
       }
@@ -496,9 +491,7 @@ int main() {
       const result = response?.data;
       
       if (result.success) {
-        toast.success('Solution submitted successfully!', {
-          icon: '🎯'
-        });
+        toast.success('Solution submitted successfully!');
         navigate(`/interview/results/${sessionId}`);
       } else {
         toast.error('Failed to submit solution');

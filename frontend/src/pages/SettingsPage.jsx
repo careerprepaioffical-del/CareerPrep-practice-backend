@@ -29,6 +29,8 @@ const SettingsPage = () => {
 
   const accountDeletionEnabled = false;
 
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -113,6 +115,28 @@ const SettingsPage = () => {
       toast.error(err?.response?.data?.message || err?.message || 'Failed to delete account');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const currentPassword = form.currentPassword.value;
+    const newPassword = form.newPassword.value;
+    const confirmPassword = form.confirmPassword.value;
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+
+    try {
+      // Call backend API to change password
+      await apiMethods.users.changePassword({ currentPassword, newPassword });
+      toast.success('Password changed successfully!');
+      form.reset();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to change password.');
     }
   };
 
@@ -232,7 +256,33 @@ const SettingsPage = () => {
             <Shield className="w-5 h-5 text-secondary-600" />
             <h2 className="text-xl font-semibold text-secondary-900">Account</h2>
           </div>
-          <p className="text-sm text-secondary-600">Password change / 2FA UI removed (not supported by backend yet).</p>
+          <div className="mb-4">
+            <button
+              type="button"
+              className="btn btn-primary mb-2"
+              onClick={() => setShowPasswordForm((v) => !v)}
+            >
+              Change Password
+            </button>
+            {showPasswordForm && (
+              <form className="space-y-3" onSubmit={handlePasswordChange}>
+                <h3 className="text-sm font-semibold text-secondary-900 mb-2">Change Password</h3>
+                <div>
+                  <label htmlFor="currentPassword" className="block text-xs font-medium text-secondary-700 mb-1">Current Password</label>
+                  <input type="password" id="currentPassword" name="currentPassword" className="input input-bordered w-full" required />
+                </div>
+                <div>
+                  <label htmlFor="newPassword" className="block text-xs font-medium text-secondary-700 mb-1">New Password</label>
+                  <input type="password" id="newPassword" name="newPassword" className="input input-bordered w-full" required />
+                </div>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-xs font-medium text-secondary-700 mb-1">Confirm New Password</label>
+                  <input type="password" id="confirmPassword" name="confirmPassword" className="input input-bordered w-full" required />
+                </div>
+                <button type="submit" className="btn btn-primary w-full">Change Password</button>
+              </form>
+            )}
+          </div>
 
           <div className="mt-4 border-t border-secondary-200 pt-4">
             <h3 className="text-sm font-semibold text-secondary-900 mb-2">Danger Zone</h3>

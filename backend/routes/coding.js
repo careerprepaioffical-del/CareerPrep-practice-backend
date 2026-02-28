@@ -127,6 +127,28 @@ router.post('/execute',
         });
       }
 
+      if (interview.status === 'completed') {
+        const existingResponse = Array.isArray(interview.responses)
+          ? interview.responses.find((response) => response.questionId === questionId)
+          : null;
+
+        return res.json({
+          success: true,
+          message: 'Solution already submitted',
+          data: {
+            sessionId,
+            questionId,
+            finalScore: interview.scores?.overall ?? existingResponse?.score ?? 0,
+            rating: existingResponse?.feedback?.overall || 'Completed',
+            testsPassed: existingResponse?.testCasesPassed,
+            totalTests: existingResponse?.totalTestCases,
+            timeElapsed: existingResponse?.timeTaken,
+            submittedAt: existingResponse?.submittedAt || interview.endTime,
+            idempotent: true
+          }
+        });
+      }
+
       const question = Array.isArray(interview.questions)
         ? interview.questions.find(q => q.id === questionId)
         : null;
@@ -341,7 +363,7 @@ router.post('/submit',
 
       const submittedAt = new Date();
 
-      interview.responses.push({
+      const newResponse = {
         questionId,
         userAnswer: 'Submitted code solution',
         code,
@@ -358,20 +380,57 @@ router.post('/submit',
           overall: rating
         },
         submittedAt
-      });
+      };
 
-      // Mark completed
-      interview.status = 'completed';
-      interview.endTime = submittedAt;
-      if (interview.startTime) {
-        interview.totalDuration = Math.round((interview.endTime - interview.startTime) / 1000);
+      const totalDuration = interview.startTime
+        ? Math.round((submittedAt - interview.startTime) / 1000)
+        : interview.totalDuration;
+      const overallScore = Math.round(Number.isFinite(numericFinalScore) ? numericFinalScore : 0);
+
+      const updatedInterview = await Interview.findOneAndUpdate(
+        { _id: interview._id, status: { $in: ['scheduled', 'in-progress'] } },
+        {
+          $push: { responses: newResponse },
+          $set: {
+            status: 'completed',
+            endTime: submittedAt,
+            totalDuration,
+            'scores.technical': overallScore,
+            'scores.behavioral': 0,
+            'scores.communication': overallScore,
+            'scores.overall': Math.round(overallScore * 0.7)
+          }
+        },
+        { new: true }
+      );
+
+      if (!updatedInterview) {
+        const latest = await Interview.findOne({ sessionId, userId });
+        if (latest?.status === 'completed') {
+          const latestResponse = Array.isArray(latest.responses)
+            ? latest.responses.find((response) => response.questionId === questionId)
+            : null;
+          return res.json({
+            success: true,
+            message: 'Solution already submitted',
+            data: {
+              sessionId,
+              questionId,
+              finalScore: latest.scores?.overall ?? latestResponse?.score ?? 0,
+              rating: latestResponse?.feedback?.overall || 'Completed',
+              testsPassed: latestResponse?.testCasesPassed,
+              totalTests: latestResponse?.totalTestCases,
+              timeElapsed: latestResponse?.timeTaken,
+              submittedAt: latestResponse?.submittedAt || latest.endTime,
+              idempotent: true
+            }
+          });
+        }
+        return res.status(409).json({
+          success: false,
+          message: 'Interview state changed. Please retry.'
+        });
       }
-      interview.scores.technical = Math.round(numericFinalScore);
-      interview.scores.behavioral = 0;
-      interview.scores.communication = Math.round(numericFinalScore);
-      interview.calculateOverallScore();
-
-      await interview.save();
 
       // Update user + progress stats
       const [user, progress] = await Promise.all([
@@ -381,28 +440,29 @@ router.post('/submit',
 
       if (progress) {
         // Update activity (minutes)
-        const minutes = interview.totalDuration ? Math.round(interview.totalDuration / 60) : 0;
+        const minutes = updatedInterview.totalDuration > 0 ? Math.max(1, Math.round(updatedInterview.totalDuration / 60)) : 0;
         await progress.updateDailyActivity(new Date(), {
           interviewsCompleted: 1,
           questionsAttempted: 1,
           timeSpent: minutes,
-          averageScore: interview.scores.overall
+          averageScore: updatedInterview.scores.overall
         });
 
-        progress.overallStats.bestScore = Math.max(progress.overallStats.bestScore || 0, interview.scores.overall || 0);
+        progress.overallStats.bestScore = Math.max(progress.overallStats.bestScore || 0, updatedInterview.scores.overall || 0);
         progress.overallStats.completedInterviews += 1;
         progress.overallStats.totalInterviews += 1;
         progress.overallStats.totalQuestionsAttempted += 1;
+        progress.overallStats.totalTimeSpent += minutes;
         if (numericTestsPassed !== undefined && numericTotalTests !== undefined) {
           progress.overallStats.totalQuestionsCorrect += numericTestsPassed === numericTotalTests ? 1 : 0;
         }
         // Keep averageScore in sync (simple running average)
         const completed = progress.overallStats.completedInterviews || 1;
         const prevAvg = progress.overallStats.averageScore || 0;
-        progress.overallStats.averageScore = Math.round(((prevAvg * (completed - 1)) + (interview.scores.overall || 0)) / completed);
+        progress.overallStats.averageScore = Math.round(((prevAvg * (completed - 1)) + (updatedInterview.scores.overall || 0)) / completed);
 
         await progress.updateSkillProgress('Coding', {
-          score: interview.scores.overall,
+          score: updatedInterview.scores.overall,
           questionsAttempted: (progress.skillProgress.find(s => s.skill === 'Coding')?.questionsAttempted || 0) + 1,
           questionsCorrect:
             (progress.skillProgress.find(s => s.skill === 'Coding')?.questionsCorrect || 0) +
@@ -417,7 +477,7 @@ router.post('/submit',
         user.stats.completedInterviews += 1;
         const completed = user.stats.completedInterviews || 1;
         const prevAvg = user.stats.averageScore || 0;
-        user.stats.averageScore = Math.round(((prevAvg * (completed - 1)) + (interview.scores.overall || 0)) / completed);
+        user.stats.averageScore = Math.round(((prevAvg * (completed - 1)) + (updatedInterview.scores.overall || 0)) / completed);
         if (progress) {
           user.stats.streakDays = progress.overallStats.currentStreak || 0;
         }
